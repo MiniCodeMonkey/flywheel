@@ -9,14 +9,12 @@ import (
 )
 
 type MowlAPI interface {
-	ImportSpotifyPlaylist(ctx context.Context, spotifyID string) (mowl.Playlist, error)
 	CreateCategory(ctx context.Context, name string) (int, error)
 	MyPrograms(ctx context.Context, creatorID int) ([]mowl.Program, error)
 	CreateProgram(ctx context.Context, p mowl.Program) (mowl.Program, error)
 	CreateSegment(ctx context.Context, name string, programID, segCatID int, f mowl.SegmentFlags) (int, error)
 	SetIntervals(ctx context.Context, segmentID int, ivs []mowl.Interval) error
 	AttachSegments(ctx context.Context, programID int, segmentIDs []int) error
-	LinkPlaylist(ctx context.Context, programID, playlistID int) error
 	ProgramTSS(ctx context.Context, programID int) (float64, error)
 	DeleteProgram(ctx context.Context, programID int) error
 }
@@ -39,6 +37,19 @@ func flagsFor(t string) mowl.SegmentFlags {
 	return mowl.SegmentFlags{}
 }
 
+// activityTypeID resolves a course's activity string to the MOWL
+// ActivityTypeID. Unknown/empty activity defaults to cycling (0).
+func activityTypeID(activity string) int {
+	switch activity {
+	case "running":
+		return 1
+	case "cycling":
+		return 0
+	default:
+		return 0
+	}
+}
+
 func toIntervals(s spec.Segment) ([]mowl.Interval, error) {
 	out := make([]mowl.Interval, 0, len(s.Intervals))
 	for _, iv := range s.Intervals {
@@ -55,11 +66,7 @@ func toIntervals(s spec.Segment) ([]mowl.Interval, error) {
 	return out, nil
 }
 
-func Apply(ctx context.Context, api MowlAPI, c spec.Course, styles spec.Styles, creatorID int) (Result, error) {
-	pl, err := api.ImportSpotifyPlaylist(ctx, c.Playlist.SpotifyID)
-	if err != nil {
-		return Result{}, fmt.Errorf("import playlist: %w", err)
-	}
+func Apply(ctx context.Context, api MowlAPI, c spec.Course, pl mowl.Playlist, styles spec.Styles, creatorID int) (Result, error) {
 	catID, err := api.CreateCategory(ctx, c.Category)
 	if err != nil {
 		return Result{}, fmt.Errorf("category: %w", err)
@@ -78,7 +85,8 @@ func Apply(ctx context.Context, api MowlAPI, c spec.Course, styles spec.Styles, 
 	}
 	prog, err := api.CreateProgram(ctx, mowl.Program{
 		Name: c.Name, ProgramCategoryID: catID, IsPublic: false,
-		ActivityTypeID: 0, BikeTypeID: 1, Description: styles.Describe(c.Style),
+		ActivityTypeID: activityTypeID(c.Activity), BikeTypeID: 1, Description: styles.Describe(c.Style),
+		PlaylistID: pl.PlaylistID,
 	})
 	if err != nil {
 		return Result{}, fmt.Errorf("program: %w", err)
@@ -101,9 +109,6 @@ func Apply(ctx context.Context, api MowlAPI, c spec.Course, styles spec.Styles, 
 	}
 	if err := api.AttachSegments(ctx, prog.ProgramID, segIDs); err != nil {
 		return Result{}, fmt.Errorf("attach: %w", err)
-	}
-	if err := api.LinkPlaylist(ctx, prog.ProgramID, pl.PlaylistID); err != nil {
-		return Result{}, fmt.Errorf("link playlist: %w", err)
 	}
 	tss, err := api.ProgramTSS(ctx, prog.ProgramID)
 	if err != nil {
