@@ -49,8 +49,8 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 			return fmt.Errorf("mowl: decode (status %d): %w", status, err)
 		}
 	}
-	if env.Error != nil {
-		return fmt.Errorf("mowl: %s", env.Error.Message)
+	if msg := env.errorMessage(); msg != "" {
+		return fmt.Errorf("mowl: %s", msg)
 	}
 	if status >= 400 {
 		return fmt.Errorf("mowl: http %d", status)

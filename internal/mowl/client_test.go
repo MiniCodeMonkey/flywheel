@@ -63,3 +63,38 @@ func TestDoReturnsEnvelopeError(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// MOWL returns the envelope Error field as a JSON string: "" on success and a
+// message on failure (not the {"Message":...} object form). All shapes must be
+// handled — a real auth call failed decoding an empty-string Error before this.
+func TestDoEnvelopeErrorShapes(t *testing.T) {
+	cases := []struct {
+		name    string
+		body    string
+		wantErr string // "" means success (no error)
+	}{
+		{"string-empty-success", `{"Data":"tok","Error":"","Stack":null}`, ""},
+		{"string-message", `{"Data":null,"Error":"Invalid login","Stack":null}`, "mowl: Invalid login"},
+		{"null-success", `{"Data":"tok","Error":null,"Stack":null}`, ""},
+		{"object-message", `{"Data":null,"Error":{"Message":"nope"}}`, "mowl: nope"},
+		{"framework-message", `{"Message":"The request is invalid."}`, "mowl: The request is invalid."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+			c := New(config.Config{APIBase: srv.URL, ClientVersion: "8.8.2"}, "t", srv.Client())
+			var out string
+			err := c.do(context.Background(), "GET", "/v1/x", nil, &out)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("want success, got %v", err)
+				}
+			} else if err == nil || err.Error() != tc.wantErr {
+				t.Fatalf("err = %v, want %q", err, tc.wantErr)
+			}
+		})
+	}
+}

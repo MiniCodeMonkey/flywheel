@@ -3,13 +3,36 @@ package mowl
 import "encoding/json"
 
 type envelope struct {
-	Data  json.RawMessage `json:"Data"`
-	Error *apiError       `json:"Error"`
-	Stack *string         `json:"Stack"`
+	Data    json.RawMessage `json:"Data"`
+	Error   json.RawMessage `json:"Error"`
+	Stack   json.RawMessage `json:"Stack"`
+	Message string          `json:"Message"` // non-enveloped framework errors (400/404)
 }
 
-type apiError struct {
-	Message string `json:"Message"`
+// errorMessage returns a human error string from the envelope's Error field,
+// or "" when there is no error. MOWL returns Error as a JSON string ("" on
+// success, a message on failure); some framework-level errors instead come
+// back un-enveloped as {"Message": "..."}. Both shapes are handled.
+func (e envelope) errorMessage() string {
+	if n := len(e.Error); n > 0 && string(e.Error) != "null" {
+		var s string
+		if json.Unmarshal(e.Error, &s) == nil {
+			if s != "" {
+				return s
+			}
+		} else {
+			var obj struct{ Message string }
+			if json.Unmarshal(e.Error, &obj) == nil && obj.Message != "" {
+				return obj.Message
+			} else {
+				return string(e.Error)
+			}
+		}
+	}
+	if e.Message != "" {
+		return e.Message
+	}
+	return ""
 }
 
 type Track struct {
