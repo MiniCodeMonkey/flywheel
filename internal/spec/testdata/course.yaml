@@ -1,0 +1,17 @@
+name: "Heavy Rock 55"
+category: "My Rides"
+activity: cycling
+targets: { duration_min: 55, tss: 75 }
+style: [road_cycling]
+playlist: { spotify_id: "abc123" }
+segments:
+  - name: Warmup
+    type: warmup
+    tracks: [1, 2]
+    intervals:
+      - { duration: 180, cadence: [80,85], intensity: 45, position: seated }
+  - name: Main
+    type: intervals
+    tracks: [3, 4]
+    intervals:
+      - { duration: 120, cadence: [90,95], intensity: [70,80], position: standing }
