@@ -33,7 +33,7 @@ func newApplyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tracks, err := trackInfo(ctx, course, 0)
+			tracks, err := trackInfo(ctx, cl, course, 0)
 			if err != nil {
 				return err
 			}

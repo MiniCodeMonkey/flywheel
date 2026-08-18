@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/minicodemonkey/flywheel/internal/mowl"
 	"github.com/minicodemonkey/flywheel/internal/plan"
 	"github.com/minicodemonkey/flywheel/internal/spec"
 	"github.com/spf13/cobra"
@@ -30,7 +31,17 @@ func newPreviewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			tracks, err := trackInfo(cmd.Context(), course, offlineSecs)
+			var tracks map[int]spec.TrackInfo
+			if offlineSecs > 0 {
+				tracks, err = trackInfo(cmd.Context(), nil, course, offlineSecs)
+			} else {
+				var cl *mowl.Client
+				cl, _, err = newClient(cmd.Context())
+				if err != nil {
+					return err
+				}
+				tracks, err = trackInfo(cmd.Context(), cl, course, 0)
+			}
 			if err != nil {
 				return err
 			}
@@ -55,8 +66,9 @@ func newPreviewCmd() *cobra.Command {
 }
 
 // trackInfo returns track index → info, either from the offline override or by
-// importing/reading the playlist from MOWL.
-func trackInfo(ctx context.Context, c spec.Course, offline int) (map[int]spec.TrackInfo, error) {
+// reading the playlist from MOWL via the given client. cl may be nil when
+// offline > 0, since no network call is made in that path.
+func trackInfo(ctx context.Context, cl *mowl.Client, c spec.Course, offline int) (map[int]spec.TrackInfo, error) {
 	out := map[int]spec.TrackInfo{}
 	if offline > 0 {
 		for _, s := range c.Segments {
@@ -65,10 +77,6 @@ func trackInfo(ctx context.Context, c spec.Course, offline int) (map[int]spec.Tr
 			}
 		}
 		return out, nil
-	}
-	cl, _, err := newClient(ctx)
-	if err != nil {
-		return nil, err
 	}
 	pl, err := cl.SpotifyPlaylist(ctx, c.Playlist.SpotifyID)
 	if err != nil {
