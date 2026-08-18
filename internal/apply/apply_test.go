@@ -18,6 +18,7 @@ type fake struct {
 	existing     []mowl.Program
 	existingCats []mowl.Category
 	createdCat   bool
+	setIntervals [][]mowl.Interval
 }
 
 func (f *fake) CreateCategory(_ context.Context, _ string) (int, error) {
@@ -39,6 +40,7 @@ func (f *fake) CreateSegment(_ context.Context, _ string, _, _ int, _ mowl.Segme
 }
 func (f *fake) SetIntervals(_ context.Context, _ int, ivs []mowl.Interval) error {
 	f.intervals += len(ivs)
+	f.setIntervals = append(f.setIntervals, ivs)
 	return nil
 }
 func (f *fake) AttachSegments(_ context.Context, _ int, ids []int) error {
@@ -127,5 +129,25 @@ func TestApplyReusesExistingCategory(t *testing.T) {
 	}
 	if res.ProgramID == 0 {
 		t.Fatalf("bad result: %+v", res)
+	}
+}
+
+func TestApplySetsScaleCoggan(t *testing.T) {
+	f := &fake{}
+	c := demoCourse() // Main has an interval at 70-80% FTP (avg 75 -> zone 2) and 88 -> zone 3? check demо
+	if _, err := Apply(context.Background(), f, c, mowl.Playlist{PlaylistID: 900}, spec.Styles{}, 42); err != nil {
+		t.Fatal(err)
+	}
+	// Warmup interval is 45-55% FTP (avg 50 -> zone 1); Main 70-80 (avg75 -> zone 2).
+	if len(f.setIntervals) == 0 {
+		t.Fatal("no intervals captured")
+	}
+	// every interval must carry a non-zero ScaleCoggan
+	for _, ivs := range f.setIntervals {
+		for _, iv := range ivs {
+			if iv.ScaleCoggan < 1 || iv.ScaleCoggan > 7 {
+				t.Fatalf("interval ScaleCoggan out of range: %+v", iv)
+			}
+		}
 	}
 }
