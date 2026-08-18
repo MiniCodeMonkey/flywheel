@@ -1,0 +1,11 @@
+# Build output
+/flywheel
+/dist/
+*.test
+
+# Local config & secrets (also lives in ~/.config/flywheel, outside repo)
+/.config/
+*.token
+
+# Scratch
+/scratch/
