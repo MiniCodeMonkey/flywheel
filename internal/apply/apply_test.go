@@ -10,15 +10,23 @@ import (
 )
 
 type fake struct {
-	created   mowl.Program
-	segments  int
-	intervals int
-	attached  []int
-	deleted   []int
-	existing  []mowl.Program
+	created      mowl.Program
+	segments     int
+	intervals    int
+	attached     []int
+	deleted      []int
+	existing     []mowl.Program
+	existingCats []mowl.Category
+	createdCat   bool
 }
 
-func (f *fake) CreateCategory(_ context.Context, _ string) (int, error)     { return 8000, nil }
+func (f *fake) CreateCategory(_ context.Context, _ string) (int, error) {
+	f.createdCat = true
+	return 8000, nil
+}
+func (f *fake) MyCategories(_ context.Context, _ int) ([]mowl.Category, error) {
+	return f.existingCats, nil
+}
 func (f *fake) MyPrograms(_ context.Context, _ int) ([]mowl.Program, error) { return f.existing, nil }
 func (f *fake) CreateProgram(_ context.Context, p mowl.Program) (mowl.Program, error) {
 	p.ProgramID = 700
@@ -103,5 +111,21 @@ func TestApplyWritesStyleDescription(t *testing.T) {
 	}
 	if !strings.Contains(f.created.Description, "road_cycling") {
 		t.Fatalf("expected description to mention style tag, got %q", f.created.Description)
+	}
+}
+
+func TestApplyReusesExistingCategory(t *testing.T) {
+	f := &fake{existingCats: []mowl.Category{{ProgramCategoryID: 8000, Name: "My Rides"}}}
+	// demoCourse uses category "My Rides"; a matching category exists, so
+	// CreateCategory must NOT be called (createCat stays false).
+	res, err := Apply(context.Background(), f, demoCourse(), mowl.Playlist{PlaylistID: 900}, spec.Styles{}, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.createdCat {
+		t.Fatal("CreateCategory was called despite an existing same-named category")
+	}
+	if res.ProgramID == 0 {
+		t.Fatalf("bad result: %+v", res)
 	}
 }

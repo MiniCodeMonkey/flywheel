@@ -4,7 +4,9 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
+	"github.com/minicodemonkey/flywheel/internal/mowl"
 	"github.com/spf13/cobra"
 )
 
@@ -31,13 +33,27 @@ func newPlaylistInspectCmd() *cobra.Command {
 			}
 			// ImportSpotifyPlaylist's returned playlist is intentionally discarded;
 			// SpotifyPlaylist below re-fetches it hydrated with track metadata.
-			pl, err := cl.ImportSpotifyPlaylist(ctx, args[0])
+			// Durations are available immediately; BPM (Tempo) may lag a little
+			// after a fresh import, so poll briefly for it.
+			imported, err := cl.ImportSpotifyPlaylist(ctx, args[0])
 			if err != nil {
 				return err
 			}
-			pl, err = cl.SpotifyPlaylist(ctx, args[0])
-			if err != nil {
-				return err
+			var pl mowl.Playlist
+			for attempt := 0; attempt < 8; attempt++ {
+				pl, err = cl.SpotifyPlaylist(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				if playlistHydrated(pl, imported.TrackCount) && bpmComplete(pl) {
+					break
+				}
+				if attempt < 7 {
+					time.Sleep(2 * time.Second)
+				}
+			}
+			if missing := missingBPM(pl); missing > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "note: BPM not yet available for %d track(s)\n", missing)
 			}
 
 			type trackOut struct {

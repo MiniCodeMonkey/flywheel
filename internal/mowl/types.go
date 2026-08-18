@@ -35,13 +35,17 @@ func (e envelope) errorMessage() string {
 	return ""
 }
 
+// Track mirrors the track shape returned by GET /v1/Spotify/Playlists/{spotifyId}
+// (the endpoint the CLI hydrates from): {ID, Name, Uri, DurationMs, Artist,
+// Tempo, IsPlayable}. Tempo is MOWL's server-detected BPM (0 until the playlist
+// has been imported and indexed); DurationMs and Name are available immediately.
 type Track struct {
-	SpotifyTrackID string `json:"SpotifyTrackID"`
+	SpotifyTrackID string `json:"ID"`
 	Artist         string `json:"Artist"`
-	Title          string `json:"Title"`
-	BPM            int    `json:"BPM"`
-	DurationMs     int    `json:"Duration"`
-	TrackID        int    `json:"TrackID"`
+	Title          string `json:"Name"`
+	BPM            int    `json:"Tempo"`
+	DurationMs     int    `json:"DurationMs"`
+	IsPlayable     bool   `json:"IsPlayable"`
 }
 
 type Playlist struct {
