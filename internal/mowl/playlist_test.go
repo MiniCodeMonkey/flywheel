@@ -14,6 +14,7 @@ import (
 func serveFixtures(t *testing.T, routes map[string]string) *Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check specific routes first (longer prefixes) before generic ones
 		for prefix, file := range routes {
 			if strings.HasPrefix(r.URL.Path, prefix) {
 				b, err := os.ReadFile(file)
@@ -38,11 +39,32 @@ func TestImportSpotifyPlaylist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pl.PlaylistID == 0 || pl.TrackCount == 0 || len(pl.Tracks) == 0 {
-		t.Fatalf("empty playlist: %+v", pl)
+	if pl.PlaylistID == 0 {
+		t.Fatalf("empty PlaylistID: %+v", pl)
 	}
-	if pl.Tracks[0].BPM == 0 || pl.Tracks[0].DurationMs == 0 {
-		t.Fatalf("track missing bpm/duration: %+v", pl.Tracks[0])
+	if pl.TrackCount == 0 {
+		t.Fatalf("empty TrackCount: %+v", pl)
+	}
+	// Import response has Tracks: null; tracks are populated asynchronously
+	// and are read via GET /v1/Spotify/Playlists/{id}
+}
+
+func TestSpotifyPlaylist(t *testing.T) {
+	c := serveFixtures(t, map[string]string{
+		"/v1/Spotify/Playlists/": "../../testdata/program_playlist.json",
+	})
+	pl, err := c.SpotifyPlaylist(context.Background(), "some-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pl.Tracks) == 0 {
+		t.Fatalf("no tracks in playlist: %+v", pl)
+	}
+	if pl.Tracks[0].BPM == 0 {
+		t.Fatalf("track missing BPM: %+v", pl.Tracks[0])
+	}
+	if pl.Tracks[0].DurationMs == 0 {
+		t.Fatalf("track missing DurationMs: %+v", pl.Tracks[0])
 	}
 }
 

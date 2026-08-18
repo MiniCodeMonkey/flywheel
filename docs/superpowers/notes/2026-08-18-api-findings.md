@@ -80,3 +80,7 @@ This step confirms that the open questions above behave as expected in the real 
 
 **Generated:** 2026-08-18  
 **Fixtures Source:** Real MOWL API responses captured offline this session (no live calls in Task 2)
+
+## MOWL Spotify API Contract
+
+PUT /v1/Spotify/Playlist import response returns Tracks:null / TrackCount set; tracks+BPM populate asynchronously and are read via GET /v1/Spotify/Playlists/{id} (SpotifyPlaylist).
