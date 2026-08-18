@@ -1,0 +1,21 @@
+# flywheel style glossary — edit freely. Tags are advisory hints Claude applies
+# when designing intervals; unknown tags are still recorded in the description.
+road_cycling:            # steady road ride: higher RPM, seated, longer efforts
+  position: seated
+  cadence: [90, 100]
+  min_interval_sec: 120
+  intensity_swing: small
+punchy:
+  min_interval_sec: 30
+  intensity_swing: large
+climb:
+  position: standing
+  cadence: [60, 75]
+  intensity_swing: small
+tabata:
+  min_interval_sec: 20
+  intensity_swing: large
+recovery:
+  position: seated
+  cadence: [80, 90]
+  intensity_swing: small
