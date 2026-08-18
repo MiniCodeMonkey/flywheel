@@ -14,15 +14,11 @@ type fake struct {
 	segments  int
 	intervals int
 	attached  []int
-	linked    bool
 	deleted   []int
 	existing  []mowl.Program
 }
 
-func (f *fake) ImportSpotifyPlaylist(_ context.Context, _ string) (mowl.Playlist, error) {
-	return mowl.Playlist{PlaylistID: 900}, nil
-}
-func (f *fake) CreateCategory(_ context.Context, _ string) (int, error) { return 8000, nil }
+func (f *fake) CreateCategory(_ context.Context, _ string) (int, error)     { return 8000, nil }
 func (f *fake) MyPrograms(_ context.Context, _ int) ([]mowl.Program, error) { return f.existing, nil }
 func (f *fake) CreateProgram(_ context.Context, p mowl.Program) (mowl.Program, error) {
 	p.ProgramID = 700
@@ -37,10 +33,15 @@ func (f *fake) SetIntervals(_ context.Context, _ int, ivs []mowl.Interval) error
 	f.intervals += len(ivs)
 	return nil
 }
-func (f *fake) AttachSegments(_ context.Context, _ int, ids []int) error { f.attached = ids; return nil }
-func (f *fake) LinkPlaylist(_ context.Context, _, _ int) error           { f.linked = true; return nil }
-func (f *fake) ProgramTSS(_ context.Context, _ int) (float64, error)     { return 74.2, nil }
-func (f *fake) DeleteProgram(_ context.Context, id int) error            { f.deleted = append(f.deleted, id); return nil }
+func (f *fake) AttachSegments(_ context.Context, _ int, ids []int) error {
+	f.attached = ids
+	return nil
+}
+func (f *fake) ProgramTSS(_ context.Context, _ int) (float64, error) { return 74.2, nil }
+func (f *fake) DeleteProgram(_ context.Context, id int) error {
+	f.deleted = append(f.deleted, id)
+	return nil
+}
 
 func demoCourse() spec.Course {
 	return spec.Course{
@@ -54,16 +55,20 @@ func demoCourse() spec.Course {
 	}
 }
 
+func demoPlaylist() mowl.Playlist {
+	return mowl.Playlist{PlaylistID: 900}
+}
+
 func TestApplyHappyPath(t *testing.T) {
 	f := &fake{}
-	res, err := Apply(context.Background(), f, demoCourse(), spec.Styles{}, 42)
+	res, err := Apply(context.Background(), f, demoCourse(), demoPlaylist(), spec.Styles{}, 42)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.ProgramID != 700 || res.PlaylistID != 900 || res.ServerTSS != 74.2 {
 		t.Fatalf("result = %+v", res)
 	}
-	if f.segments != 2 || f.intervals != 2 || len(f.attached) != 2 || !f.linked {
+	if f.segments != 2 || f.intervals != 2 || len(f.attached) != 2 || f.created.PlaylistID != 900 {
 		t.Fatalf("wiring off: %+v", f)
 	}
 	if f.attached[0] != 301 || f.attached[1] != 302 {
@@ -76,7 +81,7 @@ func TestApplyHappyPath(t *testing.T) {
 
 func TestApplyIdempotentReplace(t *testing.T) {
 	f := &fake{existing: []mowl.Program{{ProgramID: 55, Name: "Ride"}}}
-	if _, err := Apply(context.Background(), f, demoCourse(), spec.Styles{}, 42); err != nil {
+	if _, err := Apply(context.Background(), f, demoCourse(), demoPlaylist(), spec.Styles{}, 42); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.deleted) != 1 || f.deleted[0] != 55 {
@@ -90,7 +95,7 @@ func TestApplyWritesStyleDescription(t *testing.T) {
 	c.Style = []string{"road_cycling"}
 	styles := spec.Styles{"road_cycling": spec.Style{Position: "seated"}}
 
-	if _, err := Apply(context.Background(), f, c, styles, 42); err != nil {
+	if _, err := Apply(context.Background(), f, c, demoPlaylist(), styles, 42); err != nil {
 		t.Fatal(err)
 	}
 	if f.created.Description == "" {

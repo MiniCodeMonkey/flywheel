@@ -40,7 +40,7 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 		c.token = tok
 		resp, status, err = c.roundtrip(ctx, method, path, body)
 		if err != nil {
-			return err
+			return fmt.Errorf("mowl: %w", err)
 		}
 	}
 	var env envelope
