@@ -78,3 +78,12 @@ func (c *Client) MyPrograms(ctx context.Context, creatorID int) ([]Program, erro
 		map[string]any{"CreatorID": creatorID, "ItemsPerPage": 100, "PageNumber": 1}, &out)
 	return out, err
 }
+
+// Me returns the current user's UserID from GET /v1/Users/Me.
+func (c *Client) Me(ctx context.Context) (int, error) {
+	var out struct {
+		UserID int `json:"UserID"`
+	}
+	err := c.do(ctx, "GET", "/v1/Users/Me", nil, &out)
+	return out.UserID, err
+}
