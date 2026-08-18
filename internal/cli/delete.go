@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -28,7 +29,11 @@ func newDeleteCmd() *cobra.Command {
 			}
 			jsonOut, _ := cmd.Flags().GetBool("json")
 			if jsonOut {
-				fmt.Fprintf(cmd.OutOrStdout(), "{\"deleted\":%d}\n", id)
+				out, err := json.Marshal(map[string]any{"deleted_program_id": id})
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), string(out))
 				return nil
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Deleted program %d\n", id)
