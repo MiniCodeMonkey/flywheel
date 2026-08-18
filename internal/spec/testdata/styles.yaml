@@ -1,0 +1,8 @@
+road_cycling:
+  position: seated
+  cadence: [90, 100]
+  min_interval_sec: 120
+  intensity_swing: small
+punchy:
+  min_interval_sec: 30
+  intensity_swing: large
