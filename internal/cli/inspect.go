@@ -29,6 +29,8 @@ func newPlaylistInspectCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// ImportSpotifyPlaylist's returned playlist is intentionally discarded;
+			// SpotifyPlaylist below re-fetches it hydrated with track metadata.
 			pl, err := cl.ImportSpotifyPlaylist(ctx, args[0])
 			if err != nil {
 				return err
