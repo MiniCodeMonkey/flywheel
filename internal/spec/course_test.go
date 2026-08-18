@@ -26,3 +26,47 @@ func TestParseCourse(t *testing.T) {
 		t.Fatalf("cadence = %v", c.Segments[0].Intervals[0].Cadence)
 	}
 }
+
+func TestParseCourseRejectsBadIntensity(t *testing.T) {
+	tests := []struct {
+		name    string
+		yamlStr string
+	}{
+		{
+			name: "3-element intensity array",
+			yamlStr: `
+name: "Test"
+category: "Test"
+activity: cycling
+targets: { duration_min: 55, tss: 75 }
+segments:
+  - name: Test
+    type: test
+    intervals:
+      - { duration: 60, cadence: [80,85], intensity: [1,2,3], position: seated }
+`,
+		},
+		{
+			name: "1-element intensity array",
+			yamlStr: `
+name: "Test"
+category: "Test"
+activity: cycling
+targets: { duration_min: 55, tss: 75 }
+segments:
+  - name: Test
+    type: test
+    intervals:
+      - { duration: 60, cadence: [80,85], intensity: [1], position: seated }
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseCourse([]byte(tt.yamlStr))
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tt.name)
+			}
+		})
+	}
+}
