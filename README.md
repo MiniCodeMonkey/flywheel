@@ -49,7 +49,7 @@ Then the core loop, usually driven by Claude via the shipped skill:
    targets: { duration_min: 55, tss: 75 }
    style: [road_cycling, punchy]      # advisory; resolved via styles.yaml
    playlist:
-     spotify_id: "0478H01T6WxqFi0fevIPP1"
+     spotify_id: "EXPLAYLIST0000000000001"
    segments:
      - name: "Warmup"
        type: warmup                   # warmup|intervals|climb|tabata|recovery|cooldown
@@ -162,10 +162,25 @@ playlist link/ID instead.
 ## The Claude skill
 
 [`skill/SKILL.md`](skill/SKILL.md) is the shipped Claude skill. Installing
-it into an agent's skills teaches it the entire workflow above — eliciting
-ride parameters, using a Spotify MCP if available, inspecting the playlist,
-authoring and iterating `course.yaml`, previewing, and applying — so you can
-just ask for "a 55-minute heavy-rock ride" and let Claude drive the CLI.
+it teaches an agent the entire workflow above — eliciting ride parameters,
+using a Spotify MCP if available, inspecting the playlist, authoring and
+iterating `course.yaml`, previewing, and applying — so you can just ask for
+*"a 55-minute heavy-rock ride"* and let Claude drive the CLI.
+
+**Install it** (Claude Code discovers skills under `~/.claude/skills/<name>/`):
+
+```bash
+# from a clone of this repo
+mkdir -p ~/.claude/skills/flywheel
+cp skill/SKILL.md ~/.claude/skills/flywheel/SKILL.md
+```
+
+Then start a new Claude Code session and it will pick the skill up
+automatically when you ask to build a spinning ride. (For project-scoped
+use instead of global, copy it under `<your-project>/.claude/skills/flywheel/`.)
+
+The skill assumes the `flywheel` binary is installed and on your `PATH`, and
+that you've run `flywheel init` and `flywheel auth login` once (below).
 
 ## Provisional / live-verification note
 

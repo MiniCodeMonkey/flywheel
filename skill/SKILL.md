@@ -79,7 +79,7 @@ activity: cycling
 targets: { duration_min: 55, tss: 75 }
 style: [road_cycling, punchy]      # advisory; resolved via styles.yaml
 playlist:
-  spotify_id: "0478H01T6WxqFi0fevIPP1"
+  spotify_id: "EXPLAYLIST0000000000001"
 segments:
   - name: "Warmup"
     type: warmup                   # warmup|intervals|climb|tabata|recovery|cooldown

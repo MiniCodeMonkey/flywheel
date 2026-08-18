@@ -128,7 +128,7 @@ targets:
 style: [road_cycling, punchy]    # advisory tags; resolved via styles.yaml + written to description
 
 playlist:
-  spotify_id: "0478H01T6WxqFi0fevIPP1"
+  spotify_id: "EXPLAYLIST0000000000001"
 
 segments:
   - name: "Warmup"
