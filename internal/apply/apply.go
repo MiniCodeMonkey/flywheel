@@ -10,6 +10,7 @@ import (
 
 type MowlAPI interface {
 	CreateCategory(ctx context.Context, name string) (int, error)
+	MyCategories(ctx context.Context, creatorID int) ([]mowl.Category, error)
 	MyPrograms(ctx context.Context, creatorID int) ([]mowl.Program, error)
 	CreateProgram(ctx context.Context, p mowl.Program) (mowl.Program, error)
 	CreateSegment(ctx context.Context, name string, programID, segCatID int, f mowl.SegmentFlags) (int, error)
@@ -67,9 +68,24 @@ func toIntervals(s spec.Segment) ([]mowl.Interval, error) {
 }
 
 func Apply(ctx context.Context, api MowlAPI, c spec.Course, pl mowl.Playlist, styles spec.Styles, creatorID int) (Result, error) {
-	catID, err := api.CreateCategory(ctx, c.Category)
+	// Reuse an existing same-named category instead of creating a duplicate on
+	// every apply (PUT /v1/programcategories always creates a new one).
+	catID := 0
+	cats, err := api.MyCategories(ctx, creatorID)
 	if err != nil {
-		return Result{}, fmt.Errorf("category: %w", err)
+		return Result{}, fmt.Errorf("list categories: %w", err)
+	}
+	for _, cat := range cats {
+		if cat.Name == c.Category {
+			catID = cat.ProgramCategoryID
+			break
+		}
+	}
+	if catID == 0 {
+		catID, err = api.CreateCategory(ctx, c.Category)
+		if err != nil {
+			return Result{}, fmt.Errorf("category: %w", err)
+		}
 	}
 	// idempotency: delete an existing same-named program first
 	existing, err := api.MyPrograms(ctx, creatorID)

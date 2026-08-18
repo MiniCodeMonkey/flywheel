@@ -46,3 +46,16 @@ func TestCreateCategoryReturnsID(t *testing.T) {
 		t.Fatalf("id=%d err=%v", id, err)
 	}
 }
+
+func TestProgramTSSParsesObject(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The live endpoint returns an object, not a bare float.
+		w.Write([]byte(`{"Data":{"ProgramID":320030,"TSS":5.27},"Error":null}`))
+	}))
+	defer srv.Close()
+	c := New(config.Config{APIBase: srv.URL, ClientVersion: "8.8.2"}, "t", srv.Client())
+	tss, err := c.ProgramTSS(context.Background(), 320030)
+	if err != nil || tss != 5.27 {
+		t.Fatalf("tss=%v err=%v, want 5.27", tss, err)
+	}
+}

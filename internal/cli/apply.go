@@ -44,20 +44,30 @@ func newApplyCmd() *cobra.Command {
 			}
 			hydrated := pl
 			ok := false
-			for attempt := 0; attempt < 6; attempt++ {
+			for attempt := 0; attempt < 8; attempt++ {
 				p, err := cl.SpotifyPlaylist(ctx, course.Playlist.SpotifyID)
 				if err != nil {
 					return fmt.Errorf("fetch playlist: %w", err)
 				}
-				if len(p.Tracks) >= pl.TrackCount && len(p.Tracks) > 0 {
+				// Durations are required for validation; BPM (Tempo) may lag a
+				// little after a fresh import. Consider the playlist hydrated
+				// once every track has a duration, and prefer BPM too.
+				if playlistHydrated(p, pl.TrackCount) {
 					hydrated = p
 					ok = true
-					break
+					if bpmComplete(p) {
+						break
+					}
 				}
-				time.Sleep(2 * time.Second)
+				if attempt < 7 {
+					time.Sleep(2 * time.Second)
+				}
 			}
 			if !ok {
-				return fmt.Errorf("playlist tracks not available yet (Spotify indexing) — try again in a moment")
+				return fmt.Errorf("playlist track durations not available yet (Spotify indexing) — try again in a moment")
+			}
+			if missing := missingBPM(hydrated); missing > 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "note: BPM not yet available for %d track(s); proceeding\n", missing)
 			}
 
 			tracks := map[int]spec.TrackInfo{}
@@ -75,7 +85,10 @@ func newApplyCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("get current user: %w", err)
 			}
-			res, err := apply.Apply(ctx, cl, course, hydrated, styles, userID)
+			// Link via the IMPORT response's PlaylistID (the ITC playlist id).
+			// `hydrated` comes from the Spotify-catalog GET, which has no ITC
+			// PlaylistID — only `pl` (the import result) carries it.
+			res, err := apply.Apply(ctx, cl, course, pl, styles, userID)
 			if err != nil {
 				return err
 			}

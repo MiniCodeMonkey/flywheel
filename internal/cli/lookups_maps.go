@@ -28,3 +28,32 @@ func loadStyles() (spec.Styles, error) {
 	}
 	return spec.ParseStyles(b)
 }
+
+// playlistHydrated reports whether an imported playlist has enough tracks and
+// every track carries a duration (required for validation). BPM may still be
+// filling in — see bpmComplete/missingBPM.
+func playlistHydrated(p mowl.Playlist, want int) bool {
+	if len(p.Tracks) == 0 || len(p.Tracks) < want {
+		return false
+	}
+	for _, t := range p.Tracks {
+		if t.DurationMs <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// bpmComplete reports whether every track has a non-zero BPM (Tempo).
+func bpmComplete(p mowl.Playlist) bool { return missingBPM(p) == 0 }
+
+// missingBPM counts tracks whose BPM has not populated yet.
+func missingBPM(p mowl.Playlist) int {
+	n := 0
+	for _, t := range p.Tracks {
+		if t.BPM <= 0 {
+			n++
+		}
+	}
+	return n
+}

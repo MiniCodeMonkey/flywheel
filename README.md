@@ -21,10 +21,20 @@ go install github.com/minicodemonkey/flywheel/cmd/flywheel@latest
 
 Requires a MOWL / Intelligent Cycling account.
 
+## Config location
+
+`flywheel` stores its config, cached auth token, and your editable
+`styles.yaml` in the OS config dir:
+
+- macOS: `~/Library/Application Support/flywheel/`
+- Linux: `$XDG_CONFIG_HOME/flywheel/` (usually `~/.config/flywheel/`)
+
+The token file is written `0600`; your password is never stored.
+
 ## Quickstart
 
 ```
-flywheel init            # writes a starter styles.yaml to ~/.config/flywheel/
+flywheel init            # writes a starter styles.yaml to the config dir
 flywheel auth login      # MOWL email/password, caches a session token
 ```
 
@@ -96,7 +106,7 @@ output.
 
 | Command | Description |
 |---|---|
-| `flywheel init` | Write a starter `styles.yaml` into the config dir (`~/.config/flywheel/`), if one doesn't already exist. |
+| `flywheel init` | Write a starter `styles.yaml` into the config dir, if one doesn't already exist. |
 | `flywheel auth login` | Authenticate with MOWL (`--email`, or prompts; password via `MOWL_PASSWORD` env var or a prompt) and cache a session token. |
 | `flywheel playlist inspect <spotify-id>` | Import/read a Spotify playlist via MOWL and print each track's index, title, artist, BPM, and duration. `--sections` also fetches audio-analysis section starts per track. |
 | `flywheel preview <course.yaml>` | Validate and render a course's timeline, per-segment breakdown, and estimated TSS — no writes. |
@@ -144,7 +154,7 @@ resolved so you can see it before applying.
 
 Ships with sensible defaults (`road_cycling`, `punchy`, `climb`, `tabata`,
 `recovery`) at [`styles.yaml`](styles.yaml) in this repo; `flywheel init`
-copies them to `~/.config/flywheel/styles.yaml`, where they're yours to
+copies them to the config dir (see below), where they're yours to
 edit.
 
 ## Optional Spotify MCP
@@ -182,17 +192,19 @@ use instead of global, copy it under `<your-project>/.claude/skills/flywheel/`.)
 The skill assumes the `flywheel` binary is installed and on your `PATH`, and
 that you've run `flywheel init` and `flywheel auth login` once (below).
 
-## Provisional / live-verification note
+## TSS calibration (known gap)
 
-A few implementation details were derived from API response shapes rather
-than a full live round-trip and are expected to be confirmed (and, if
-needed, adjusted) on a real account: the exact program↔playlist link
-mechanism, the "standing" `PositionType` id, and the calibration of
-`preview`'s local Coggan TSS estimate against MOWL's server-computed TSS.
-None of this blocks normal use — `preview` and `apply` may report slightly
-different TSS numbers until calibrated; see
-[docs/superpowers/notes/2026-08-18-api-findings.md](docs/superpowers/notes/2026-08-18-api-findings.md)
-for the full details and the smoke-test procedure.
+The full create/read flow is verified against a live account: playlist
+import + hydration, the program↔playlist link, seated/standing positions,
+cadence and %FTP intervals, idempotent re-apply, and cleanup all work.
+
+The one open item is **TSS calibration**. `preview` computes a local Coggan
+estimate (`Σ durationₕ × IF² × 100`), but MOWL's server-computed TSS uses a
+different model — for one 41-minute ride the local estimate was ~31.6 while
+the server reported ~5.3. Treat the **server TSS printed by `apply`** as
+authoritative when targeting a TSS number; `preview`'s value is a rough
+relative guide until the local formula is calibrated to match MOWL. See
+[docs/superpowers/notes/2026-08-18-api-findings.md](docs/superpowers/notes/2026-08-18-api-findings.md).
 
 ## Links
 

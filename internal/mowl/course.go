@@ -59,9 +59,12 @@ func (c *Client) LinkPlaylist(ctx context.Context, programID, playlistID int) er
 }
 
 func (c *Client) ProgramTSS(ctx context.Context, programID int) (float64, error) {
-	var tss float64
-	err := c.do(ctx, "GET", fmt.Sprintf("/v1/calculations/program/%d/TSS", programID), nil, &tss)
-	return tss, err
+	// The endpoint returns an object: {"ProgramID": N, "TSS": 5.27}.
+	var out struct {
+		TSS float64 `json:"TSS"`
+	}
+	err := c.do(ctx, "GET", fmt.Sprintf("/v1/calculations/program/%d/TSS", programID), nil, &out)
+	return out.TSS, err
 }
 
 func (c *Client) DeleteProgram(ctx context.Context, programID int) error {
@@ -86,4 +89,26 @@ func (c *Client) Me(ctx context.Context) (int, error) {
 	}
 	err := c.do(ctx, "GET", "/v1/Users/Me", nil, &out)
 	return out.UserID, err
+}
+
+// Category is a personal program category ("camp").
+type Category struct {
+	ProgramCategoryID int    `json:"ProgramCategoryID"`
+	Name              string `json:"Name"`
+	CreatorID         int    `json:"CreatorID"`
+}
+
+// MyCategories lists the categories created by the given user.
+func (c *Client) MyCategories(ctx context.Context, creatorID int) ([]Category, error) {
+	var out []Category
+	err := c.do(ctx, "POST", fmt.Sprintf("/v1/Users/%d/camps", creatorID),
+		map[string]any{"CreatorUserID": creatorID, "ItemsPerPage": 200, "PageNumber": 1}, &out)
+	return out, err
+}
+
+// Program fetches a single program by id.
+func (c *Client) Program(ctx context.Context, programID int) (Program, error) {
+	var p Program
+	err := c.do(ctx, "GET", fmt.Sprintf("/v1/programs/%d", programID), nil, &p)
+	return p, err
 }

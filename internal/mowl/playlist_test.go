@@ -49,9 +49,14 @@ func TestImportSpotifyPlaylist(t *testing.T) {
 	// and are read via GET /v1/Spotify/Playlists/{id}
 }
 
+// TestSpotifyPlaylist serves the real GET /v1/Spotify/Playlists/{id} shape
+// (ID/Name/Tempo/DurationMs per track) — the endpoint the CLI actually
+// hydrates from. Verifies Title (from "Name"), BPM (from "Tempo") and
+// DurationMs (from "DurationMs") all parse; a field-name mismatch here caused
+// empty titles/durations/BPM on the first live run.
 func TestSpotifyPlaylist(t *testing.T) {
 	c := serveFixtures(t, map[string]string{
-		"/v1/Spotify/Playlists/": "../../testdata/program_playlist.json",
+		"/v1/Spotify/Playlists/": "../../testdata/spotify_playlist.json",
 	})
 	pl, err := c.SpotifyPlaylist(context.Background(), "some-id")
 	if err != nil {
@@ -60,11 +65,9 @@ func TestSpotifyPlaylist(t *testing.T) {
 	if len(pl.Tracks) == 0 {
 		t.Fatalf("no tracks in playlist: %+v", pl)
 	}
-	if pl.Tracks[0].BPM == 0 {
-		t.Fatalf("track missing BPM: %+v", pl.Tracks[0])
-	}
-	if pl.Tracks[0].DurationMs == 0 {
-		t.Fatalf("track missing DurationMs: %+v", pl.Tracks[0])
+	tr := pl.Tracks[0]
+	if tr.Title == "" || tr.BPM == 0 || tr.DurationMs == 0 || tr.SpotifyTrackID == "" || tr.Artist == "" {
+		t.Fatalf("track fields did not parse from catalog shape: %+v", tr)
 	}
 }
 
