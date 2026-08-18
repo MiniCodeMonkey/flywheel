@@ -192,19 +192,22 @@ use instead of global, copy it under `<your-project>/.claude/skills/flywheel/`.)
 The skill assumes the `flywheel` binary is installed and on your `PATH`, and
 that you've run `flywheel init` and `flywheel auth login` once (below).
 
-## TSS calibration (known gap)
+## How TSS works
 
-The full create/read flow is verified against a live account: playlist
-import + hydration, the program↔playlist link, seated/standing positions,
-cadence and %FTP intervals, idempotent re-apply, and cleanup all work.
+`flywheel` targets Training Stress Score (TSS) accurately. MOWL derives an
+interval's intensity from its **Coggan power zone** (1-7), not the raw FTP
+percentage, and computes program TSS with a Normalized-Power model:
 
-The one open item is **TSS calibration**. `preview` computes a local Coggan
-estimate (`Σ durationₕ × IF² × 100`), but MOWL's server-computed TSS uses a
-different model — for one 41-minute ride the local estimate was ~31.6 while
-the server reported ~5.3. Treat the **server TSS printed by `apply`** as
-authoritative when targeting a TSS number; `preview`'s value is a rough
-relative guide until the local formula is calibrated to match MOWL. See
-[docs/superpowers/notes/2026-08-18-api-findings.md](docs/superpowers/notes/2026-08-18-api-findings.md).
+```
+IF_np = ( Σ durationᵢ · IF(zoneᵢ)⁴ / Σ durationᵢ )^¼
+TSS   = totalHours · IF_np² · 100
+```
+
+`flywheel` sets each interval's zone from your `intensity` (% of FTP) and
+`preview` uses the same model, so its estimated TSS matches the server
+value `apply` reports (verified live to within rounding). Design against
+`preview`'s TSS with confidence; `apply` prints the authoritative
+server TSS as a final confirmation.
 
 ## Links
 

@@ -26,10 +26,17 @@ delete, cleaned up).
 - **TSS endpoint shape:** `GET /v1/calculations/program/{id}/TSS` returns
   `{"ProgramID": N, "TSS": <float>}` (an object, not a bare number).
 
-## Open item
-- **TSS calibration:** MOWL's server TSS differs substantially from the local
-  Coggan estimate (server ~5.3 vs local ~31.6 for one 41-min ride at 45–88%
-  FTP). The server value is authoritative; the local estimate needs
-  calibrating (likely a different intensity/zone model, possibly dependent on
-  the account's configured FTP). Rely on `apply`'s reported server TSS when
-  targeting a TSS number.
+## TSS model (reverse-engineered live)
+- MOWL's TSS is driven ENTIRELY by each interval's `ScaleCoggan` power zone
+  (1-7), NOT by `FTPFrom/FTPTo` or `Intensity` (those had zero effect in
+  controlled probes). We never set it, so every interval scored as zone 1 —
+  hence the ~6x under-read before the fix.
+- Per-zone intensity factors (measured, 3600s single intervals):
+  z1=0.2775, z2=0.6575, z3=0.8300, z4=0.9800, z5=1.1300, z6=1.3575, z7=1.5025.
+- FTP does not modulate IF within a zone (z2 @ 60% == z2 @ 75% == 43.23 TSS/hr).
+- The whole-program TSS is Normalized-Power weighted:
+  `IF_np = (Σ durᵢ·IF(zoneᵢ)⁴ / Σ durᵢ)^¼`, `TSS = totalHours·IF_np²·100`
+  (a z2/z3 mix probe gave server 57.57 vs formula 57.55).
+- Fix: `flywheel` maps each interval's %FTP to a Coggan zone, sets
+  `ScaleCoggan`, and `preview` uses the same NP model — preview now matches
+  the server TSS to within rounding (31.9 vs 31.74 on a 41-min ride).

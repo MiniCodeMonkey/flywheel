@@ -70,6 +70,7 @@ type Interval struct {
 	FTPFrom        int `json:"FTPFrom"`
 	FTPTo          int `json:"FTPTo"`
 	PositionTypeID int `json:"PositionTypeID"`
+	ScaleCoggan    int `json:"ScaleCoggan"` // Coggan power zone 1-7; drives MOWL's TSS
 }
 
 type Program struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/minicodemonkey/flywheel/internal/mowl"
+	"github.com/minicodemonkey/flywheel/internal/plan"
 	"github.com/minicodemonkey/flywheel/internal/spec"
 )
 
@@ -58,10 +59,14 @@ func toIntervals(s spec.Segment) ([]mowl.Interval, error) {
 		if !ok {
 			return nil, fmt.Errorf("segment %q: unknown position %q", s.Name, iv.Position)
 		}
+		avgFTP := (iv.Intensity.From + iv.Intensity.To) / 2
 		out = append(out, mowl.Interval{
 			Duration: iv.Duration, RPMFrom: iv.Cadence[0], RPMTo: iv.Cadence[1],
 			FTPFrom: iv.Intensity.From, FTPTo: iv.Intensity.To,
-			Intensity: (iv.Intensity.From + iv.Intensity.To) / 2, PositionTypeID: pos,
+			Intensity: avgFTP, PositionTypeID: pos,
+			// ScaleCoggan (the power zone) is what MOWL's TSS calc reads —
+			// derive it from the interval's %FTP so TSS reflects intensity.
+			ScaleCoggan: plan.CogganZone(avgFTP),
 		})
 	}
 	return out, nil
