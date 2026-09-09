@@ -37,6 +37,9 @@ type Interval struct {
 	Cadence   [2]int         `yaml:"cadence"`
 	Intensity IntensityValue `yaml:"intensity"`
 	Position  string         `yaml:"position"`
+	// Cycle is the interval kind: empty or "sb" for a normal block, "acc" for
+	// an acceleration burst, "free" for free tempo.
+	Cycle string `yaml:"cycle,omitempty"`
 }
 
 // IntensityValue accepts a scalar (steady) or a [from,to] pair (ramp).

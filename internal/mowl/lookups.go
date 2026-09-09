@@ -35,3 +35,12 @@ func (c *Client) ActivityTypes(ctx context.Context) ([]ActivityType, error) {
 	err := c.do(ctx, "GET", "/v1/ActivityTypes", nil, &out)
 	return out, err
 }
+
+// CycleAlias maps a course spec's cycle name to MOWL's CycleID. "acc" marks an
+// acceleration burst -- short, seated, and it overrules any RPM input.
+var CycleAlias = map[string]int{
+	"":     1,
+	"sb":   1,
+	"acc":  4,
+	"free": 5,
+}

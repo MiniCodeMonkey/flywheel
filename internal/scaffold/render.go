@@ -29,8 +29,12 @@ func Render(c spec.Course, spotifyID string, targetMin, targetTSS int) string {
 		fmt.Fprintf(&b, "  - name: %q\n    type: %s\n    tracks: [%s]\n    intervals:\n",
 			s.Name, s.Type, strings.Join(tracks, ", "))
 		for _, iv := range s.Intervals {
-			fmt.Fprintf(&b, "      - { duration: %3d, cadence: [%d, %d], intensity: [%d, %d], position: %s }\n",
-				iv.Duration, iv.Cadence[0], iv.Cadence[1], iv.Intensity.From, iv.Intensity.To, iv.Position)
+			cycle := ""
+			if iv.Cycle != "" {
+				cycle = fmt.Sprintf(", cycle: %s", iv.Cycle)
+			}
+			fmt.Fprintf(&b, "      - { duration: %3d, cadence: [%d, %d], intensity: [%d, %d], position: %s%s }\n",
+				iv.Duration, iv.Cadence[0], iv.Cadence[1], iv.Intensity.From, iv.Intensity.To, iv.Position, cycle)
 		}
 	}
 	return b.String()

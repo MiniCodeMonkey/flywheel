@@ -65,7 +65,12 @@ func toIntervals(s spec.Segment) ([]mowl.Interval, error) {
 			return nil, fmt.Errorf("segment %q: unknown position %q", s.Name, iv.Position)
 		}
 		avgFTP := (iv.Intensity.From + iv.Intensity.To) / 2
+		cyc, ok := mowl.CycleAlias[iv.Cycle]
+		if !ok {
+			return nil, fmt.Errorf("segment %q: unknown cycle %q", s.Name, iv.Cycle)
+		}
 		out = append(out, mowl.Interval{
+			CycleID:  cyc,
 			Duration: iv.Duration, RPMFrom: iv.Cadence[0], RPMTo: iv.Cadence[1],
 			FTPFrom: iv.Intensity.From, FTPTo: iv.Intensity.To,
 			Intensity: avgFTP, PositionTypeID: pos,

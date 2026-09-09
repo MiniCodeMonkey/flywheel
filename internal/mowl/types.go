@@ -70,7 +70,11 @@ type Interval struct {
 	FTPFrom        int `json:"FTPFrom"`
 	FTPTo          int `json:"FTPTo"`
 	PositionTypeID int `json:"PositionTypeID"`
-	ScaleCoggan    int `json:"ScaleCoggan"` // Coggan power zone 1-7; drives MOWL's TSS
+	// CycleID selects the interval's kind: 1 "SB" is a normal block, 4 "ACC"
+	// an acceleration burst (which overrules any RPM), 5 "Frit tempo" free
+	// tempo. Leaving it unset gives a normal block.
+	CycleID     int `json:"CycleID,omitempty"`
+	ScaleCoggan int `json:"ScaleCoggan"` // Coggan power zone 1-7; drives MOWL's TSS
 
 	// Read-only fields, populated by GET /v1/programs/{id}.
 	Sequence         int    `json:"Sequence,omitempty"`
