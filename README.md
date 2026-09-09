@@ -138,6 +138,7 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 | `targets.tss` | number | Target Training Stress Score. |
 | `style` | []string | Advisory tags (program-level), resolved via `styles.yaml`; written into the description, no direct MOWL field. |
 | `playlist.spotify_id` | string | Spotify playlist ID to import and link. |
+| `playlist.crossfade_sec` | number | Seconds each track overlaps the next; defaults to 10, which MOWL requires. See "Crossfade" below. |
 | `segments[].name` | string | Segment name. |
 | `segments[].type` | enum | One of `warmup`, `intervals`, `climb`, `tabata`, `recovery`, `cooldown` — maps to a MOWL segment category (and sets warmup/cooldown flags). |
 | `segments[].tracks` | []int | Song indices (from `playlist inspect`) this segment spans. |
@@ -149,7 +150,7 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 
 Validation (`preview` and `apply`): each playlist track up to the last one a
 segment claims is assigned to exactly one segment, and the course's interval
-durations sum to those tracks' real length (±5s tolerance). Tracks after that
+durations sum to those tracks' crossfade-adjusted length (±5s tolerance). Tracks after that
 may be left uncovered — they are the cooldown tail, which keeps playing once
 the program ends. An individual segment may start or end mid-track, drifting
 up to 120s from the tracks it claims, which is what lets an active recovery
@@ -242,6 +243,21 @@ same name, so refinement is just another prompt:
 
 The agent drives the CLI throughout -- scaffolding, previewing and applying --
 so you can stay at the level of how the ride should *feel*.
+
+## Crossfade
+
+MOWL requires Spotify's crossfade to be set to **10 seconds exactly**, and its
+own editor lays tracks out that way. Each track therefore starts 10s before
+the previous one ends, so a playlist's timeline is shorter than the sum of its
+track durations by one crossfade per transition — 2:30 across a 16-track ride.
+
+`flywheel` models this: every track that has another track after it gives up
+its trailing 10s, and `scaffold`, `preview` and `apply` all work against that
+adjusted timeline. Without it, interval boundaries drift progressively later
+than the music, and by the end of a ride the closing effort lands on the wrong
+song. `scaffold --crossfade` changes the value and records it in
+`playlist.crossfade_sec`; set it to `0` only if you have a MOWL setup that does
+not crossfade.
 
 ## How TSS works
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/minicodemonkey/flywheel/internal/plan"
 	"github.com/minicodemonkey/flywheel/internal/scaffold"
+	"github.com/minicodemonkey/flywheel/internal/spec"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +20,7 @@ func newScaffoldCmd() *cobra.Command {
 		minSection int
 		maxSection int
 		endHot     bool
+		crossfade  int
 	)
 	cmd := &cobra.Command{
 		Use:   "scaffold <spotify-playlist-id>",
@@ -70,12 +72,14 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 				}
 				tracks = append(tracks, t)
 			}
-			opts := scaffold.Options{TargetTSS: targetTSS, MinSection: minSection, MaxSection: maxSection, EndHot: endHot}
+			opts := scaffold.Options{TargetTSS: targetTSS, MinSection: minSection,
+				MaxSection: maxSection, EndHot: endHot, Crossfade: crossfade}
 			course, gamma, err := scaffold.Build(tracks, segs, opts)
 			if err != nil {
 				return err
 			}
 			course.Name, course.Category = name, category
+			course.Playlist.CrossfadeSec = &crossfade
 			total := 0
 			for _, s := range course.Segments {
 				for _, iv := range s.Intervals {
@@ -102,5 +106,7 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 	cmd.Flags().IntVar(&minSection, "min-section", scaffold.Defaults().MinSection, "fold sections shorter than this (seconds) into their neighbour")
 	cmd.Flags().IntVar(&maxSection, "max-section", scaffold.Defaults().MaxSection, "split sections longer than this (seconds); 0 to never split")
 	cmd.Flags().BoolVar(&endHot, "end-hot", true, "end each work segment on its hardest zone")
+	cmd.Flags().IntVar(&crossfade, "crossfade", spec.DefaultCrossfadeSec,
+		"seconds each track overlaps the next; MOWL requires Spotify crossfade at 10")
 	return cmd
 }

@@ -105,6 +105,16 @@ Two approaches that look reasonable and are wrong:
 Tune the gamma until TSS lands. It preserves the ordering. `flywheel
 scaffold` does this search for you and prints the gamma it settled on.
 
+### The playlist is shorter than its tracks add up to
+
+MOWL requires Spotify crossfade at **10 seconds exactly**, so every track
+starts 10s before the previous one ends. A 16-track ride is therefore 2:30
+shorter than the sum of its track durations, and MOWL's editor draws it that
+way. `flywheel` trims each track's trailing 10s for you; `preview` reports the
+adjusted length. Don't add the raw durations up by hand and expect them to
+match — they won't, and the error grows with every track, putting the closing
+effort on the wrong song.
+
 ### Cadence is per track, not per interval
 
 Set one cadence for a whole track, derived from its BPM: use half-time or
@@ -176,6 +186,9 @@ overshoots badly.
   agree within ~1%. Target ~5% above the number you want and confirm against
   `apply`'s server TSS, which is authoritative.
 - **Playlist name comes back empty** from the hydrate endpoint; cosmetic.
+- **Crossfade must be 10s in Spotify, per device.** It is a device setting,
+  not a profile one. If it is wrong, or the connection drops mid-ride and
+  Spotify skips a crossfade, the ride desyncs by 10s per transition.
 
 Use `flywheel show <program-id> --intervals` to settle any question about
 what MOWL actually stored, rather than reasoning from the spec alone.

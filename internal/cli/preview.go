@@ -85,5 +85,5 @@ func trackInfo(ctx context.Context, cl *mowl.Client, c spec.Course, offline int)
 	for i, tr := range pl.Tracks {
 		out[i+1] = spec.TrackInfo{DurationSec: tr.DurationMs / 1000, Title: tr.Title}
 	}
-	return out, nil
+	return spec.CrossfadeTracks(out, c.Playlist.Crossfade()), nil
 }

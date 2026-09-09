@@ -74,6 +74,7 @@ func newApplyCmd() *cobra.Command {
 			for i, tr := range hydrated.Tracks {
 				tracks[i+1] = spec.TrackInfo{DurationSec: tr.DurationMs / 1000, Title: tr.Title}
 			}
+			tracks = spec.CrossfadeTracks(tracks, course.Playlist.Crossfade())
 
 			if errs := spec.Validate(course, tracks, segmentTypeMap(), positionMap(), 5); len(errs) > 0 {
 				for _, e := range errs {

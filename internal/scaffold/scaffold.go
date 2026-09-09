@@ -43,11 +43,13 @@ type Options struct {
 	MinSection int  // sections shorter than this fold into their neighbour
 	MaxSection int  // sections longer than this split into equal parts
 	EndHot     bool // work segments end on their hardest zone
+	Crossfade  int  // seconds each track overlaps the next (see spec.Crossfade)
 }
 
 // Defaults returns the option set used when flags are left alone.
 func Defaults() Options {
-	return Options{TargetTSS: 75, MinSection: 13, MaxSection: 180, EndHot: true}
+	return Options{TargetTSS: 75, MinSection: 13, MaxSection: 180, EndHot: true,
+		Crossfade: spec.DefaultCrossfadeSec}
 }
 
 // zone bands, low to high, as [from,to] %FTP; index is the ladder position
@@ -215,6 +217,7 @@ func Build(tracks []Track, segs []SegmentSpec, o Options) (spec.Course, float64,
 	if len(segs) == 0 {
 		return spec.Course{}, 0, fmt.Errorf("no segments given")
 	}
+	tracks = trimCrossfade(tracks, o.Crossfade)
 	byIndex := map[int]Track{}
 	for _, t := range tracks {
 		byIndex[t.Index] = t
@@ -240,6 +243,44 @@ func Build(tracks []Track, segs []SegmentSpec, o Options) (spec.Course, float64,
 		}
 	}
 	return best, bestGamma, nil
+}
+
+// trimCrossfade drops the trailing crossfade seconds from every track that has
+// another track after it. Spotify starts the next track that early, so those
+// seconds are not part of the ride's timeline and no interval may sit in them.
+func trimCrossfade(tracks []Track, crossfade int) []Track {
+	if crossfade <= 0 {
+		return tracks
+	}
+	last := 0
+	for _, t := range tracks {
+		if t.Index > last {
+			last = t.Index
+		}
+	}
+	out := make([]Track, 0, len(tracks))
+	for _, t := range tracks {
+		if t.Index == last {
+			out = append(out, t)
+			continue
+		}
+		t.DurationSec -= crossfade
+		left := float64(crossfade)
+		secs := append([]Section(nil), t.Sections...)
+		for len(secs) > 0 && left > 0 {
+			tail := &secs[len(secs)-1]
+			if tail.Duration > left {
+				tail.Duration -= left
+				left = 0
+				break
+			}
+			left -= tail.Duration
+			secs = secs[:len(secs)-1]
+		}
+		t.Sections = secs
+		out = append(out, t)
+	}
+	return out
 }
 
 // ParseSegment reads a "Name:type:1-3,5" segment flag.

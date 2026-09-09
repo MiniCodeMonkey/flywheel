@@ -19,7 +19,8 @@ func Render(c spec.Course, spotifyID string, targetMin, targetTSS int) string {
 	if len(c.Style) > 0 {
 		fmt.Fprintf(&b, "style: [%s]\n", strings.Join(c.Style, ", "))
 	}
-	fmt.Fprintf(&b, "playlist:\n  spotify_id: %q\nsegments:\n", spotifyID)
+	fmt.Fprintf(&b, "playlist:\n  spotify_id: %q\n  crossfade_sec: %d\nsegments:\n",
+		spotifyID, c.Playlist.Crossfade())
 	for _, s := range c.Segments {
 		tracks := make([]string, len(s.Tracks))
 		for i, t := range s.Tracks {

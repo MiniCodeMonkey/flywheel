@@ -19,6 +19,9 @@ type Targets struct {
 
 type Playlist struct {
 	SpotifyID string `yaml:"spotify_id"`
+	// CrossfadeSec is the Spotify crossfade in seconds; nil means the
+	// MOWL-required default. See Crossfade.
+	CrossfadeSec *int `yaml:"crossfade_sec,omitempty"`
 }
 
 type Segment struct {

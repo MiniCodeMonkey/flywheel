@@ -138,7 +138,10 @@ func TestBuildValidatesAgainstTrackDurations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tracks := map[int]spec.TrackInfo{1: {DurationSec: 120}, 2: {DurationSec: 120}}
+	// validation sees the same crossfade-adjusted timeline the scaffolder built against
+	tracks := spec.CrossfadeTracks(
+		map[int]spec.TrackInfo{1: {DurationSec: 120}, 2: {DurationSec: 120}},
+		spec.DefaultCrossfadeSec)
 	if errs := spec.Validate(c, tracks, mowl.SegmentTypeAlias, mowl.PositionAlias, 5); len(errs) > 0 {
 		t.Fatalf("scaffolded course should validate, got %v", errs)
 	}
@@ -149,4 +152,43 @@ func TestBuildRejectsUnindexedTrack(t *testing.T) {
 	if _, _, err := Build(tr, []SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1}}}, Defaults()); err == nil {
 		t.Fatal("expected an error for a track with no duration")
 	}
+}
+
+func TestBuildTrimsEachTrackByTheCrossfade(t *testing.T) {
+	tracks := []Track{
+		{Index: 1, BPM: 120, DurationSec: 200, Sections: evenSections(200)},
+		{Index: 2, BPM: 120, DurationSec: 180, Sections: evenSections(180)},
+		{Index: 3, BPM: 120, DurationSec: 160, Sections: evenSections(160)},
+	}
+	segs := []SegmentSpec{{Name: "W", Type: "warmup", Tracks: []int{1}},
+		{Name: "M", Type: "intervals", Tracks: []int{2, 3}}}
+	o := Defaults()
+	o.Crossfade = 10
+	c, _, err := Build(tracks, segs, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// tracks 1 and 2 each give 10s to the next track's fade-in; track 3 is whole
+	want := map[string]int{"W": 190, "M": 170 + 160}
+	for _, s := range c.Segments {
+		got := 0
+		for _, iv := range s.Intervals {
+			got += iv.Duration
+		}
+		if got != want[s.Name] {
+			t.Errorf("segment %q sums to %ds, want %ds", s.Name, got, want[s.Name])
+		}
+	}
+}
+
+func evenSections(total int) []Section {
+	var out []Section
+	for n := 0; n < total; n += 20 {
+		d := 20.0
+		if n+20 > total {
+			d = float64(total - n)
+		}
+		out = append(out, Section{Duration: d, Loudness: -6 + float64(n%3)})
+	}
+	return out
 }
