@@ -1,5 +1,13 @@
 # flywheel style glossary — edit freely. Tags are advisory hints Claude applies
 # when designing intervals; unknown tags are still recorded in the description.
+#
+# House limits, measured from MOWL's own rides. The scaffolder enforces these;
+# the numbers live here so they are yours to change.
+#   standing runs      ~30s, never past 90s      (--max-standing)
+#   standing cadence   60-78                     (--standing-cadence-max)
+#   ACC bursts         ~10% of work intervals    (--acc)
+#   crossfade          9s per track transition   (--crossfade)
+#   cadence multiple   full or half BPM only, never two-thirds
 road_cycling:            # steady road ride: higher RPM, seated, longer efforts
   position: seated
   cadence: [90, 100]
@@ -10,7 +18,7 @@ punchy:
   intensity_swing: large
 climb:
   position: standing
-  cadence: [60, 75]
+  cadence: [60, 70]      # out of the saddle is a climbing cadence, not a fast one
   intensity_swing: small
 tabata:
   min_interval_sec: 20

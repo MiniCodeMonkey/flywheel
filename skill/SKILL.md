@@ -62,6 +62,41 @@ Other commands: `flywheel list`, `flywheel show <program-id> [--intervals]`
 `flywheel delete <program-id>`, `flywheel lookups` (valid segment/position/
 activity types — don't guess).
 
+## The rule book
+
+These numbers come from measuring MOWL's own rides through the API -- four
+official ROCK programs (282 intervals) plus a 128-ride sample. Follow them
+unless the user says otherwise; they are what separates a ride that reads as
+designed from one that reads as generated.
+
+| Rule | Value |
+|---|---|
+| Structure | `W-AR-W-AR-W-CD`; 2-4 work segments, 3 is most common at 55 min |
+| Active recovery | one interval, 30-115s, zone 1, on its **own short track** |
+| Cooldown | one interval, 240-310s, zone 1, always the last segment |
+| Crossfade | 9s per track transition |
+| Interval length | median ~31s, 90th percentile ~86s |
+| Standing run | ~30s typical, never past ~90s |
+| Standing cadence | 60-78, never higher |
+| Seated cadence | 60-90, occasionally to 110 |
+| Cadence multiple | full or half BPM only -- **never two-thirds** |
+| No cadence at all | ~15% of intervals |
+| ACC bursts | ~10% of intervals, ~27s, seated, cadence left at 0 |
+| Time at zone 5+ | ~11% |
+| Ride ends on | fire; zone 7 (owl) appears in none of the four ROCK rides |
+| Target TSS | 68-73 for a 55-minute ride |
+
+Things that look right and are wrong:
+
+- **Splitting a block where nothing changes.** MOWL's own rides have one
+  adjacent identical pair in 258. Every split tells the rider to change
+  something; a split they cannot act on is worse than no split.
+- **Long standing blocks.** You cannot hold four minutes out of the saddle.
+  What the rider actually does is alternate, so write it that way.
+- **Riding a fast track at two-thirds tempo.** A 134 BPM track at 89 rpm is
+  wrong; it is a 67 rpm climb.
+- **Owl on every finale.** Reserve zone 7; the official rock rides never use it.
+
 ## Design method
 
 This is the part that decides whether a ride feels designed or generated.
@@ -141,6 +176,11 @@ labels as a MOWL-authored ride:
 | fire | `[121, 150]` | 6 |
 | owl | `[151, 200]` | 7 |
 
+Set `cycle: acc` on an interval to make it an acceleration burst (MOWL's
+"ACC", `CycleID` 4): a short seated surge in the same gear at higher RPM. ACC
+overrules any RPM input, so leave `cadence: [0, 0]`. `cycle: free` is MOWL's
+"Frit tempo". Omitting `cycle` gives a normal block.
+
 ### TSS comes from zone buckets
 
 MOWL derives TSS from each interval's Coggan zone, not its raw %FTP. Moving
@@ -153,8 +193,11 @@ overshoots badly.
 
 - Work segments **end on red or above**, never blue or white. Build the last
   segment's ending as a ramp — red, then fire, then owl.
-- Put an **Active Recovery segment** (`type: recovery`) after the warmup and
-  between every pair of work segments, so no two work blocks touch.
+- Put an **Active Recovery segment** (`type: recovery`) between work segments.
+  It is a single zone-1 interval riding its own short track, so the next work
+  segment starts on a fresh song. Build the playlist with a 60-115s track at
+  each recovery point -- that is how MOWL's own rides get short recoveries
+  without segments starting mid-song.
 - A segment may start or end **mid-track**. `preview` validates the course
   total against the playlist length (±5s) and allows each segment to drift up
   to 120s from the tracks it claims, so an active recovery can be 45s carved

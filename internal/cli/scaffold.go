@@ -21,6 +21,9 @@ func newScaffoldCmd() *cobra.Command {
 		maxSection int
 		endHot     bool
 		crossfade  int
+		maxStand   int
+		standCad   int
+		accShare   float64
 	)
 	cmd := &cobra.Command{
 		Use:   "scaffold <spotify-playlist-id>",
@@ -73,7 +76,8 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 				tracks = append(tracks, t)
 			}
 			opts := scaffold.Options{TargetTSS: targetTSS, MinSection: minSection,
-				MaxSection: maxSection, EndHot: endHot, Crossfade: crossfade}
+				MaxSection: maxSection, EndHot: endHot, Crossfade: crossfade,
+				MaxStanding: maxStand, StandingCadenceMax: standCad, ACCShare: accShare}
 			course, gamma, err := scaffold.Build(tracks, segs, opts)
 			if err != nil {
 				return err
@@ -106,6 +110,12 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 	cmd.Flags().IntVar(&minSection, "min-section", scaffold.Defaults().MinSection, "fold sections shorter than this (seconds) into their neighbour")
 	cmd.Flags().IntVar(&maxSection, "max-section", scaffold.Defaults().MaxSection, "split sections longer than this (seconds); 0 to never split")
 	cmd.Flags().BoolVar(&endHot, "end-hot", true, "end each work segment on its hardest zone")
+	cmd.Flags().IntVar(&maxStand, "max-standing", scaffold.Defaults().MaxStanding,
+		"longest unbroken standing run (seconds)")
+	cmd.Flags().IntVar(&standCad, "standing-cadence-max", scaffold.Defaults().StandingCadenceMax,
+		"cadence ceiling while out of the saddle")
+	cmd.Flags().Float64Var(&accShare, "acc", scaffold.Defaults().ACCShare,
+		"roughly what fraction of work intervals become ACC bursts")
 	cmd.Flags().IntVar(&crossfade, "crossfade", spec.DefaultCrossfadeSec,
 		"seconds each track overlaps the next; MOWL requires Spotify crossfade at 10")
 	return cmd
