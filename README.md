@@ -201,6 +201,44 @@ use instead of global, copy it under `<your-project>/.claude/skills/flywheel/`.)
 The skill assumes the `flywheel` binary is installed and on your `PATH`, and
 that you've run `flywheel init` and `flywheel auth login` once (below).
 
+### Example prompts
+
+Start with the shape of the ride. Duration and TSS are the two numbers worth
+naming; everything else the agent will ask about or decide.
+
+> Use flywheel to generate a new 55 minute workout, aim for a TSS of about 88.
+
+> Build me a 45-minute ride around this playlist, nothing above threshold --
+> I'm riding easy today. `https://open.spotify.com/playlist/...`
+
+Steer the music. With a Spotify MCP connected the agent can build the
+playlist too, so describe the mix rather than picking tracks:
+
+> Let's start with the playlist. I want a mix of rock (AC/DC, Queen, Guns'n'Roses) and maybe some electronic in the mix --
+> see my Spotify liked songs. Split into 3-4 segments.
+
+> Swap the two slowest tracks in the climb block for something above 170 BPM.
+
+Steer the structure. These map onto the design rules in the skill:
+
+> Add active recovery segments between the work blocks, and one at the end.
+
+> Every work segment should end on red or fire, never blue or white.
+
+> TSS can be lower, just keep it at least 68.
+
+Iterate on a ride you already have. Applying replaces the program with the
+same name, so refinement is just another prompt:
+
+> Show me what's actually in program 324212 and check the recovery segments
+> never go above blue.
+
+> That climb block is too long. Cut it to three tracks and push the extra
+> intensity into the finish instead.
+
+The agent drives the CLI throughout -- scaffolding, previewing and applying --
+so you can stay at the level of how the ride should *feel*.
+
 ## How TSS works
 
 `flywheel` targets Training Stress Score (TSS) accurately. MOWL derives an
@@ -217,12 +255,6 @@ TSS   = totalHours · IF_np² · 100
 value `apply` reports (verified live to within rounding). Design against
 `preview`'s TSS with confidence; `apply` prints the authoritative
 server TSS as a final confirmation.
-
-## Links
-
-- Design spec: [docs/superpowers/specs/2026-08-18-flywheel-design.md](docs/superpowers/specs/2026-08-18-flywheel-design.md)
-- Implementation plan: [docs/superpowers/plans/2026-08-18-flywheel.md](docs/superpowers/plans/2026-08-18-flywheel.md)
-- API findings: [docs/superpowers/notes/2026-08-18-api-findings.md](docs/superpowers/notes/2026-08-18-api-findings.md)
 
 ## Disclaimer
 
