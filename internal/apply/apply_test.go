@@ -99,6 +99,33 @@ func TestApplyIdempotentReplace(t *testing.T) {
 	}
 }
 
+// Applying replaces rather than updates: the old program is deleted and a new
+// one created, so callers must be told the ID changed.
+func TestApplyReportsReplacedID(t *testing.T) {
+	f := &fake{existing: []mowl.Program{{ProgramID: 55, Name: "Ride"}}}
+	res, err := Apply(context.Background(), f, demoCourse(), demoPlaylist(), spec.Styles{}, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ReplacedID != 55 {
+		t.Fatalf("ReplacedID = %d, want 55", res.ReplacedID)
+	}
+	if res.ProgramID == res.ReplacedID {
+		t.Fatalf("ProgramID should differ from the replaced ID, both %d", res.ProgramID)
+	}
+}
+
+func TestApplyReportsNoReplacementWhenNoneExists(t *testing.T) {
+	f := &fake{}
+	res, err := Apply(context.Background(), f, demoCourse(), demoPlaylist(), spec.Styles{}, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.ReplacedID != 0 {
+		t.Fatalf("ReplacedID = %d, want 0", res.ReplacedID)
+	}
+}
+
 func TestApplyWritesStyleDescription(t *testing.T) {
 	f := &fake{}
 	c := demoCourse()

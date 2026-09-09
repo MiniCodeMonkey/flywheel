@@ -25,6 +25,11 @@ type Result struct {
 	ProgramID  int
 	PlaylistID int
 	ServerTSS  float64
+	// ReplacedID is the program ID that this apply deleted because it carried
+	// the same name, or 0 when nothing was replaced. Applying does not update a
+	// program in place: the old one is deleted and a new one created, so the
+	// program ID changes on every apply.
+	ReplacedID int
 }
 
 func flagsFor(t string) mowl.SegmentFlags {
@@ -97,11 +102,13 @@ func Apply(ctx context.Context, api MowlAPI, c spec.Course, pl mowl.Playlist, st
 	if err != nil {
 		return Result{}, fmt.Errorf("list programs: %w", err)
 	}
+	replacedID := 0
 	for _, p := range existing {
 		if p.Name == c.Name {
 			if err := api.DeleteProgram(ctx, p.ProgramID); err != nil {
 				return Result{}, fmt.Errorf("replace delete: %w", err)
 			}
+			replacedID = p.ProgramID
 		}
 	}
 	prog, err := api.CreateProgram(ctx, mowl.Program{
@@ -135,5 +142,5 @@ func Apply(ctx context.Context, api MowlAPI, c spec.Course, pl mowl.Playlist, st
 	if err != nil {
 		return Result{}, fmt.Errorf("tss: %w", err)
 	}
-	return Result{ProgramID: prog.ProgramID, PlaylistID: pl.PlaylistID, ServerTSS: tss}, nil
+	return Result{ProgramID: prog.ProgramID, PlaylistID: pl.PlaylistID, ServerTSS: tss, ReplacedID: replacedID}, nil
 }

@@ -105,8 +105,13 @@ func newApplyCmd() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), string(out))
 				return nil
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Created program %d (playlist %d), server TSS %.1f\n",
-				res.ProgramID, res.PlaylistID, res.ServerTSS)
+			if res.ReplacedID != 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "Replaced program %d with %d (playlist %d), server TSS %.1f\n",
+					res.ReplacedID, res.ProgramID, res.PlaylistID, res.ServerTSS)
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "Created program %d (playlist %d), server TSS %.1f\n",
+					res.ProgramID, res.PlaylistID, res.ServerTSS)
+			}
 			return nil
 		},
 	}
