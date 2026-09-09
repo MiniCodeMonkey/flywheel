@@ -12,3 +12,6 @@
 
 # This repo tracks its design docs (global ignore excludes docs/superpowers)
 !docs/superpowers/
+
+# goreleaser build output
+dist/
