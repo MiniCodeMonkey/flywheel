@@ -8,16 +8,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// buildInfo reports the module version and VCS revision stamped into the
-// binary by the Go toolchain. A binary built from a working tree reports
-// "(devel)" with the revision of HEAD, so an installed binary that has fallen
-// behind the source tree is identifiable at a glance.
+// Stamped at release-build time via -ldflags -X. A `go build` or `go install`
+// leaves these empty and the values come from the Go toolchain's build info
+// instead, so both paths report something meaningful.
+var (
+	buildVersion string
+	buildCommit  string
+)
+
+// buildInfo reports the version and VCS revision of the running binary. A
+// binary built from a working tree reports "(devel)" with the revision of
+// HEAD, so an installed binary that has fallen behind the source tree is
+// identifiable at a glance.
 func buildInfo() (version, revision string, modified bool) {
 	version, revision = "unknown", "unknown"
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
 		return
 	}
+	defer func() {
+		if buildVersion != "" {
+			version = buildVersion
+		}
+		if buildCommit != "" {
+			revision = buildCommit
+		}
+	}()
 	if bi.Main.Version != "" {
 		version = bi.Main.Version
 	}

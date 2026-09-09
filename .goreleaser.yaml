@@ -1,0 +1,63 @@
+# Release build for the flywheel CLI. Cut a release by pushing a v* tag; the
+# release workflow runs this. See RELEASING.md.
+version: 2
+
+project_name: flywheel
+
+before:
+  hooks:
+    - go test ./...
+
+builds:
+  - id: flywheel
+    main: ./cmd/flywheel
+    binary: flywheel
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    # `flywheel version` reads these first and falls back to the Go toolchain's
+    # build info, so a release binary reports its tag rather than a
+    # pseudo-version.
+    ldflags:
+      - -s -w
+      - -X github.com/minicodemonkey/flywheel/internal/cli.buildVersion={{ .Version }}
+      - -X github.com/minicodemonkey/flywheel/internal/cli.buildCommit={{ .FullCommit }}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - styles.yaml
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Documentation
+      regexp: '^docs'
+      order: 2
+    - title: Other
+      order: 99
+  filters:
+    exclude:
+      - '^chore'
+      - '^ci'
+
+release:
+  footer: |
+    ## Install
+
+    ```
+    go install github.com/minicodemonkey/flywheel/cmd/flywheel@{{ .Tag }}
+    ```
