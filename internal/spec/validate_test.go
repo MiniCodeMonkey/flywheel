@@ -53,3 +53,34 @@ func TestValidateBadType(t *testing.T) {
 		t.Fatal("expected unknown-type error")
 	}
 }
+
+func TestValidateAllowsSegmentBoundaryOffTrackBoundary(t *testing.T) {
+	c := baseCourse()
+	// the recovery starts mid-track: W gives up 45s, M takes them on
+	c.Segments[0].Intervals[0].Duration = 155
+	c.Segments[1].Intervals[0].Duration = 225
+	tr, st, ps := fixtures()
+	if errs := Validate(c, tr, st, ps, 5); len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+}
+
+func TestValidateRejectsDriftBeyondLimit(t *testing.T) {
+	c := baseCourse()
+	c.Segments[0].Intervals[0].Duration = 200 - (maxSegmentDriftSec + 10)
+	c.Segments[1].Intervals[0].Duration = 180 + (maxSegmentDriftSec + 10)
+	tr, st, ps := fixtures()
+	if errs := Validate(c, tr, st, ps, 5); len(errs) == 0 {
+		t.Fatal("expected a segment drift error")
+	}
+}
+
+func TestValidateRejectsCourseTotalMismatch(t *testing.T) {
+	c := baseCourse()
+	c.Segments[0].Intervals[0].Duration = 160 // 40s vanish from the course
+	tr, st, ps := fixtures()
+	errs := Validate(c, tr, st, ps, 5)
+	if len(errs) == 0 {
+		t.Fatal("expected a course total error")
+	}
+}

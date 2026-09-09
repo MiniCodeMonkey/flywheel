@@ -148,9 +148,11 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 | `segments[].intervals[].position` | enum | `seated` / `standing` / … (see `flywheel lookups`). |
 
 Validation (`preview` and `apply`): every playlist track is assigned to
-exactly one segment; each segment's interval durations sum to the real
-length of its assigned tracks (±5s tolerance); segment `type` and `position`
-must resolve to valid MOWL IDs.
+exactly one segment; the whole course's interval durations sum to the
+playlist's real length (±5s tolerance); an individual segment may start or
+end mid-track, drifting up to 120s from the tracks it claims, which is what
+lets an active recovery run 45s inside a four-minute song; segment `type` and
+`position` must resolve to valid MOWL IDs.
 
 ## `styles.yaml`
 
