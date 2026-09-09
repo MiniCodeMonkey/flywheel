@@ -129,6 +129,7 @@ labels as a MOWL-authored ride:
 | yellow | `[91, 105]` | 4 |
 | red | `[106, 120]` | 5 |
 | fire | `[121, 150]` | 6 |
+| owl | `[151, 200]` | 7 |
 
 ### TSS comes from zone buckets
 
@@ -140,18 +141,25 @@ overshoots badly.
 
 ### Structure
 
-- Work segments **end on red or fire**, never blue or white.
-- Put an **Active Recovery segment** (`type: recovery`) between work segments
-  and at the end of the ride. It needs its own whole track — pick the
-  quietest thing available; check `loudness` rather than guessing from genre.
-- A segment must consume **whole tracks**: `preview` validates that its
-  interval durations sum to its tracks' real durations (±5s).
+- Work segments **end on red or above**, never blue or white. Build the last
+  segment's ending as a ramp — red, then fire, then owl.
+- Put an **Active Recovery segment** (`type: recovery`) after the warmup and
+  between every pair of work segments, so no two work blocks touch.
+- A segment may start or end **mid-track**. `preview` validates the course
+  total against the playlist length (±5s) and allows each segment to drift up
+  to 120s from the tracks it claims, so an active recovery can be 45s carved
+  out of a four-minute song's outro rather than a whole track.
+- **Active recovery is short**: 30-90s, never longer. Carve it from the tail
+  of the preceding track, where the song is already backing off.
+- The **program ends hot**, on red or above — never on a recovery or cooldown
+  segment. The cooldown happens after the program, not inside it.
 
 ## Things that will bite you
 
 - **`tracks:` never reaches MOWL.** It is local validation only. MOWL lines
   segments up with the playlist purely by elapsed time, so alignment holds
-  only because each segment's intervals sum to its tracks' real durations.
+  because the course's intervals sum to the playlist's real length. That is
+  also why a segment boundary may fall mid-track.
 - **`apply` replaces, it does not update.** It deletes the same-named program
   and creates a new one, so **the program ID changes on every apply**.
 - **A freshly imported playlist indexes asynchronously.** Durations and BPM
