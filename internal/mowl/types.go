@@ -71,6 +71,10 @@ type Interval struct {
 	FTPTo          int `json:"FTPTo"`
 	PositionTypeID int `json:"PositionTypeID"`
 	ScaleCoggan    int `json:"ScaleCoggan"` // Coggan power zone 1-7; drives MOWL's TSS
+
+	// Read-only fields, populated by GET /v1/programs/{id}.
+	Sequence         int    `json:"Sequence,omitempty"`
+	PositionTypeName string `json:"PositionTypeName,omitempty"`
 }
 
 type Program struct {
@@ -84,6 +88,22 @@ type Program struct {
 	PlaylistID        int    `json:"PlaylistID,omitempty"`
 	SegmentCount      int    `json:"SegmentCount,omitempty"`
 	TotalDuration     int    `json:"TotalDuration,omitempty"`
+	CategoryName      string `json:"CategoryName,omitempty"`
+	// Segments is populated by GET /v1/programs/{id}, which returns the whole
+	// program tree including each segment's intervals. It is not sent on write.
+	Segments []Segment `json:"Segments,omitempty"`
+}
+
+// Segment is a program segment as returned by GET /v1/programs/{id}.
+type Segment struct {
+	SegmentID        int        `json:"SegmentID"`
+	Name             string     `json:"Name"`
+	IsWarmup         bool       `json:"IsWarmup"`
+	IsActiveRecovery bool       `json:"IsActiveRecovery"`
+	IsCooldown       bool       `json:"IsCooldown"`
+	TotalDuration    int        `json:"TotalDuration"`
+	CategoryID       int        `json:"CategoryID"`
+	Intervals        []Interval `json:"Intervals"`
 }
 
 type SegmentFlags struct {
