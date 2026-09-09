@@ -19,6 +19,11 @@ Built in public.
 go install github.com/minicodemonkey/flywheel/cmd/flywheel@latest
 ```
 
+Or download a binary from the [releases
+page](https://github.com/MiniCodeMonkey/flywheel/releases). Check what you are
+running with `flywheel version`; see [RELEASING.md](RELEASING.md) for how
+releases are cut.
+
 Requires a MOWL / Intelligent Cycling account.
 
 ## Config location
