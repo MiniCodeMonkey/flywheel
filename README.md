@@ -92,8 +92,9 @@ Then the core loop, usually driven by Claude via the shipped skill:
 
 4. **Apply** — creates the course in MOWL (imports the playlist, creates the
    category/program/segments/intervals, links the playlist, attaches
-   segments in order). Idempotent — re-applying the same file updates in
-   place instead of duplicating:
+   segments in order). Re-applying the same file replaces rather than
+   duplicates: a program with the same name is deleted first, so the program
+   ID changes on every apply.
 
    ```
    flywheel apply course.yaml
@@ -108,9 +109,10 @@ output.
 |---|---|
 | `flywheel init` | Write a starter `styles.yaml` into the config dir, if one doesn't already exist. |
 | `flywheel auth login` | Authenticate with MOWL (`--email`, or prompts; password via `MOWL_PASSWORD` env var or a prompt) and cache a session token. |
-| `flywheel playlist inspect <spotify-id>` | Import/read a Spotify playlist via MOWL and print each track's index, title, artist, BPM, and duration. `--sections` also fetches audio-analysis section starts per track. |
+| `flywheel playlist inspect <spotify-id>` | Import/read a Spotify playlist via MOWL and print each track's index, title, artist, BPM, and duration. `--sections` also fetches each track's musical sections with start, duration and loudness — the data a ride needs to follow the music. `--wait` (default 3m) bounds how long to wait for a freshly imported playlist to finish indexing. |
 | `flywheel preview <course.yaml>` | Validate and render a course's timeline, per-segment breakdown, and estimated TSS — no writes. |
-| `flywheel apply <course.yaml>` | Validate and create (or idempotently update) a course in MOWL; reports the server-computed TSS. |
+| `flywheel apply <course.yaml>` | Validate and create a course in MOWL, replacing any same-named program; reports the server-computed TSS. |
+| `flywheel version` | Print the version and VCS revision the binary was built from — check this when `preview` numbers look wrong. |
 | `flywheel list` | List MOWL programs this account has created. |
 | `flywheel delete <program-id>` | Delete a created program (and its private category if empty). |
 | `flywheel lookups` | Dump valid MOWL segment categories and activity types, plus flywheel's segment-type/position alias maps, so nothing is guessed. |

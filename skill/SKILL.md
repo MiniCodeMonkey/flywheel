@@ -6,122 +6,173 @@ description: Use when the user wants to build a spinning ride/course, design a M
 # flywheel
 
 Drives the `flywheel` CLI to build MOWL (Intelligent Cycling) spinning courses
-from Spotify playlists. The CLI holds no design intelligence — song
-selection, phase structure, cadence/intensity, and time/TSS targeting are all
-your judgment calls, guided by an editable style glossary
-(`styles.yaml`) and a declarative `course.yaml` spec.
+from Spotify playlists. The CLI holds no design intelligence — song selection,
+phase structure, cadence/intensity, and time/TSS targeting are all your
+judgment calls, guided by an editable style glossary (`styles.yaml`) and a
+declarative `course.yaml` spec.
 
 ## Prerequisites
 
 - `flywheel` binary installed and on `PATH`.
 - One-time setup, if not already done: `flywheel init` (writes `styles.yaml`)
   and `flywheel auth login` (caches a MOWL session token).
-- A Spotify MCP server is optional — see "Spotify playlist" below.
+- A Spotify MCP server is optional — see "Optional Spotify MCP" below.
 
-Every `flywheel` subcommand accepts `--json` for machine-readable output;
-prefer it when parsing results programmatically.
+Run `flywheel version` first and compare the revision to the checked-out
+source. An installed binary that lags the repo silently uses an older TSS
+model and produces numbers that do not match `preview`. Rebuild with
+`go install ./cmd/flywheel` when they differ.
+
+Every subcommand accepts `--json`; prefer it when parsing programmatically.
 
 ## Workflow
 
-1. **Elicit ride parameters.** Target duration (minutes), target TSS,
-   style/vibe (free text plus any `styles.yaml` tags), and any artist/track/
-   genre constraints. Ask only for what's missing.
-2. **Get a Spotify playlist.** If a Spotify MCP is available, use its tools
-   to build or adjust a playlist that roughly hits the target duration. If
-   not, ask the user for an existing Spotify playlist link or ID. Either way
-   you end up with a `spotify_id`. The playlist fixes the ride's length —
-   don't fight it with padding intervals.
-3. **Inspect it:** `flywheel playlist inspect <spotify-id> --json`. Read
-   each track's index, title, artist, duration, BPM, and energy sections —
-   this is the data you author the spec against.
-4. **Author `course.yaml`** (see schema below): roughly 3 segments spanning
-   multiple songs — warmup, work/main, cooldown. Each segment's interval
-   durations must sum to the real length of its assigned tracks (±5s
-   tolerance). Set cadence near each track's BPM. Resolve any `style` tags
-   through `styles.yaml` into concrete defaults, but deviate when the music
-   calls for it.
-5. **Preview and iterate:** `flywheel preview course.yaml`. Check total time
-   against target duration and estimated TSS against target TSS, and see how
-   each `style` tag resolved. Adjust intensities/cadence, or add/drop songs
-   via the Spotify MCP and re-inspect, until both land. `preview` never
-   writes anything — iterate freely.
-6. **Apply:** `flywheel apply course.yaml`. This imports the playlist,
-   creates the category/program/segments/intervals, links the playlist, and
-   attaches segments in order. Idempotent — re-applying the same file updates
-   in place rather than duplicating. Report the created program and the
-   server-computed TSS to the user (compare it to `preview`'s estimate).
+1. **Elicit ride parameters.** Target duration, target TSS, style/vibe, and
+   any artist/genre constraints. Ask only for what's missing.
+2. **Get a Spotify playlist.** Build one with a Spotify MCP if available,
+   otherwise ask for a playlist link or ID. The playlist fixes the ride's
+   length — don't fight it with padding intervals.
+3. **Inspect it:** `flywheel playlist inspect <spotify-id> --sections --json`.
+   Always pass `--sections`: it returns each track's musical sections with
+   `start`, `duration` and `loudness`, which is the data that makes a ride
+   follow the music instead of a stopwatch.
+4. **Author `course.yaml`** using the design method below.
+5. **Preview and iterate:** `flywheel preview course.yaml`. Never writes.
+6. **Apply:** `flywheel apply course.yaml`. Report the program ID and the
+   server-computed TSS.
 
-Other commands: `flywheel list` (courses this account created), `flywheel
-delete <program-id>` (remove a course and its private category if empty, for
-cleanup/iteration), `flywheel lookups` (valid segment types, position types,
-activity types, bike types — don't guess these).
+Other commands: `flywheel list`, `flywheel delete <program-id>`,
+`flywheel lookups` (valid segment/position/activity types — don't guess).
 
-## Design heuristics
+## Design method
 
-- **Playlist-first.** The playlist fixes ride length; don't invent silence or
-  padding to hit a duration — swap songs instead.
-- **Phase shape.** Ease in (warmup), build through the work/main segment(s),
-  ease out (cooldown). Avoid abrupt intensity jumps between segments.
-- **Stay aligned to the music.** Interval boundaries should land on song or
-  section edges from the `inspect` data, not arbitrary timestamps.
-- **`style` is advisory, not gospel.** Resolve tags via `styles.yaml` for a
-  consistent starting point, then deviate when a specific song's energy or
-  BPM argues for something different.
-- **`intensity` is % of FTP**, not absolute watts — a scalar is steady state,
-  `[from,to]` is a ramp.
+This is the part that decides whether a ride feels designed or generated.
+
+### Align every interval to a musical section
+
+Interval boundaries must land on section boundaries from `--sections`, never
+on a uniform grid. A ride built on round 30/45/60-second blocks reads as
+monotone no matter how the intensities move, because the changes fight the
+song. Real rides have irregular intervals — 0:57, 0:14, 0:28, 0:43, 1:19 —
+because songs do.
+
+Fold any section shorter than ~13s into its neighbour, carrying loudness as
+the duration-weighted mean. Sub-13s blocks are unrideable and MOWL's own
+rides don't use them.
+
+### Drive intensity from loudness, not position in the ride
+
+Rank each section by `loudness` **within its own track**. The loud sections
+are the choruses and drops; the quiet ones are intros, verses and bridges.
+Map that rank onto a zone so the chorus is the hard part. This is what makes
+a ride track the music.
+
+Apply a curve to the rank (rank^gamma, gamma > 1) rather than a linear map.
+That keeps most sections low with sharp peaks on the loudest sections, which
+is how you get a low average TSS while keeping real dynamics.
+
+Two approaches that look reasonable and are wrong:
+
+- **Demoting the longest intervals** to hit a TSS target destroys the
+  mapping, because the longest sections are usually the loudest. You end up
+  with a 14-second burst at fire and the big outro at blue.
+- **Compressing the zone range** flattens the whole ride into two zones.
+
+Tune the gamma until TSS lands. It preserves the ordering.
+
+### Cadence is per track, not per interval
+
+Set one cadence for a whole track, derived from its BPM: use half-time or
+two-thirds time to land in a rideable 60-105 rpm. A 186 BPM metal track rides
+93 rpm; a 124 BPM rock track becomes a 62 rpm standing climb. Varying cadence
+per interval reads as noise. MOWL's own rides show a fixed narrow range like
+`88-89` across a run of intervals.
+
+Get texture from **position** instead: alternate seated and standing within
+the same zone, standing on the loudest sections.
+
+### Write intensity as MOWL's zone bands
+
+Emit `intensity` as the band, not a single number, so the app shows the same
+labels as a MOWL-authored ride:
+
+| Band | %FTP | Coggan zone |
+|---|---|---|
+| white | `[0, 55]` | 1 |
+| blue | `[56, 75]` | 2 |
+| green | `[76, 90]` | 3 |
+| yellow | `[91, 105]` | 4 |
+| red | `[106, 120]` | 5 |
+| fire | `[121, 150]` | 6 |
+
+### TSS comes from zone buckets
+
+MOWL derives TSS from each interval's Coggan zone, not its raw %FTP. Moving
+an interval from 95% to 105% changes nothing (both zone 4); moving it to 106%
+jumps it to zone 5 and costs far more. Zone 6 is very expensive — reserve it
+for segment endings rather than sprinkling it through a block, or TSS
+overshoots badly.
+
+### Structure
+
+- Work segments **end on red or fire**, never blue or white.
+- Put an **Active Recovery segment** (`type: recovery`) between work segments
+  and at the end of the ride. It needs its own whole track — pick the
+  quietest thing available; check `loudness` rather than guessing from genre.
+- A segment must consume **whole tracks**: `preview` validates that its
+  interval durations sum to its tracks' real durations (±5s).
+
+## Things that will bite you
+
+- **`tracks:` never reaches MOWL.** It is local validation only. MOWL lines
+  segments up with the playlist purely by elapsed time, so alignment holds
+  only because each segment's intervals sum to its tracks' real durations.
+- **`apply` replaces, it does not update.** It deletes the same-named program
+  and creates a new one, so **the program ID changes on every apply**.
+- **A freshly imported playlist indexes asynchronously.** Durations and BPM
+  come back as 0 for minutes on a playlist MOWL has not seen. `inspect`
+  polls (`--wait`, default 3m) and warns. Building against zero durations
+  fails validation with "tracks are 0s".
+- **`preview` TSS overestimates the server** on rides made of many short
+  section-aligned intervals — measured at 5-6% high across several applies
+  (69.9→65.7, 76.4→72.6, 76.2→72.0). On rides with few long intervals the two
+  agree within ~1%. Target ~5% above the number you want and confirm against
+  `apply`'s server TSS, which is authoritative.
+- **Playlist name comes back empty** from the hydrate endpoint; cosmetic.
 
 ## `course.yaml` reference
 
 ```yaml
-name: "Heavy Rock 55"
+name: "Hammer & Bass 55"
 category: "My Rides"              # personal MOWL category, created if missing
 activity: cycling
-targets: { duration_min: 55, tss: 75 }
-style: [road_cycling, punchy]      # advisory; resolved via styles.yaml
+targets: { duration_min: 56, tss: 72 }
+style: [punchy]                    # advisory; resolved via styles.yaml
 playlist:
   spotify_id: "EXPLAYLIST0000000000001"
 segments:
-  - name: "Warmup"
+  - name: "Roll Out"
     type: warmup                   # warmup|intervals|climb|tabata|recovery|cooldown
-    tracks: [1, 2]                 # song indices from `playlist inspect`
+    tracks: [1, 2, 3]              # song indices from `playlist inspect`
+    intervals:                     # durations come from section boundaries
+      - { duration: 11, cadence: [94, 95], intensity: [0, 55], position: seated }
+      - { duration: 36, cadence: [94, 95], intensity: [56, 75], position: seated }
+  - name: "Active Recovery"
+    type: recovery
+    tracks: [4]
     intervals:
-      - { duration: 180, cadence: [80,85], intensity: 45, position: seated }
-  - name: "Main"
-    type: intervals
-    tracks: [3,4,5,6,7,8,9,10]
-    style: [interval]
-    intervals:
-      - { duration: 120, cadence: [90,95],  intensity: 70, position: seated }
-      - { duration: 90,  cadence: [95,105], intensity: 90, position: standing }
-  - name: "Cooldown"
-    type: cooldown
-    tracks: [11]
-    intervals:
-      - { duration: 180, cadence: [70,75], intensity: 40, position: seated }
+      - { duration: 138, cadence: [74, 75], intensity: [56, 75], position: seated }
 ```
 
-`intensity` is a scalar (%FTP) or `[from,to]` for a ramp; `cadence` is
-`[rpm_from, rpm_to]`; `position` is `seated`/`standing`/etc (see `lookups`);
-`duration` is seconds. Full field semantics, validation rules, and the
-`styles.yaml` format: see the repo README and
-`docs/superpowers/specs/2026-08-18-flywheel-design.md` (§4–5) rather than
-duplicating them here.
+`intensity` is a scalar (%FTP) or `[from,to]`; `cadence` is `[rpm_from,
+rpm_to]`; `position` is `seated`/`standing` (see `lookups`); `duration` is
+seconds. Full field semantics and the `styles.yaml` format: see the repo
+README and `docs/superpowers/specs/2026-08-18-flywheel-design.md` (§4–5).
 
 ## Optional Spotify MCP
 
-`flywheel` never talks to Spotify itself — it only ever takes a Spotify
-playlist ID. A Spotify MCP server (e.g. `marcelmarais/spotify-mcp-server` or
-`varunneal/spotify-mcp`) is optional tooling for the playlist-authoring half
-of the workflow, and needs its own one-time Spotify Developer app (client
-id/secret/redirect + OAuth) configured outside of `flywheel`. Check whether
-playlist-authoring tools are available in the current session; if so, use
-them to build/tune the playlist. If not, degrade gracefully — ask the user
-for an existing Spotify playlist link or ID and continue from step 3.
-
-## Note on provisional details
-
-Some CLI behavior (exact playlist-link format, the standing position ID,
-TSS-formula calibration against MOWL's server-side number) is confirmed by
-running the workflow live rather than fixed in advance. This is expected and
-non-blocking — `preview`'s estimated TSS and `apply`'s server-reported TSS may
-differ slightly; report both if they diverge.
+`flywheel` never talks to Spotify itself — it only takes a playlist ID. A
+Spotify MCP server (e.g. `marcelmarais/spotify-mcp-server`) is optional
+tooling for the playlist-authoring half, and needs its own Spotify Developer
+app configured outside `flywheel`. If none is available, ask the user for an
+existing playlist and continue from step 3.
