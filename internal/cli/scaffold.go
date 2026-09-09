@@ -77,7 +77,8 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 			}
 			opts := scaffold.Options{TargetTSS: targetTSS, MinSection: minSection,
 				MaxSection: maxSection, EndHot: endHot, Crossfade: crossfade,
-				MaxStanding: maxStand, StandingCadenceMax: standCad, ACCShare: accShare}
+				MaxStanding: maxStand, StandingCadenceMin: scaffold.Defaults().StandingCadenceMin,
+				StandingCadenceMax: standCad, ACCShare: accShare}
 			course, gamma, err := scaffold.Build(tracks, segs, opts)
 			if err != nil {
 				return err

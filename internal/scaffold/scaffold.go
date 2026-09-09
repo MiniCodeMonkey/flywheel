@@ -48,8 +48,10 @@ type Options struct {
 	// MaxStanding bounds one unbroken standing run. Real MOWL rides stand for
 	// about 30s at a time and rarely past 90s: you cannot hold a long one.
 	MaxStanding int
-	// StandingCadenceMax caps cadence while out of the saddle. Standing
-	// cadence in MOWL's own rides tops out in the high 70s.
+	// StandingCadenceMin and StandingCadenceMax bound cadence while out of the
+	// saddle. MOWL's own rides stand between 60 and the high 70s: below that
+	// is a grind, above it you cannot hold the position.
+	StandingCadenceMin int
 	StandingCadenceMax int
 	// ACCShare is roughly the fraction of work intervals marked as
 	// acceleration bursts.
@@ -60,7 +62,7 @@ type Options struct {
 func Defaults() Options {
 	return Options{TargetTSS: 75, MinSection: 13, MaxSection: 180, EndHot: true,
 		Crossfade: spec.DefaultCrossfadeSec, MaxStanding: 60,
-		StandingCadenceMax: 78, ACCShare: 0.10}
+		StandingCadenceMin: 60, StandingCadenceMax: 78, ACCShare: 0.10}
 }
 
 // zone bands, low to high, as [from,to] %FTP; index is the ladder position
@@ -199,10 +201,20 @@ func mergeIdentical(ivs []spec.Interval) []spec.Interval {
 	return out
 }
 
+// standingCadence pulls a cadence into the range a rider can actually hold out
+// of the saddle.
+func standingCadence(c [2]int, o Options) [2]int {
+	if c[0] < o.StandingCadenceMin || c[0] > o.StandingCadenceMax {
+		return [2]int{64, 65}
+	}
+	return c
+}
+
 // breakStanding sits the rider back down once a standing run reaches the cap.
+// The final interval is left alone: it carries the segment's ending.
 func breakStanding(ivs []spec.Interval, max int) []spec.Interval {
 	run := 0
-	for i := range ivs {
+	for i := 0; i < len(ivs)-1; i++ {
 		if ivs[i].Position != "standing" {
 			run = 0
 			continue
@@ -213,6 +225,29 @@ func breakStanding(ivs []spec.Interval, max int) []spec.Interval {
 			continue
 		}
 		run += ivs[i].Duration
+	}
+	// The segment's ending stays standing, so trim back into it: sit the rider
+	// down before the finish rather than let the run overshoot through it.
+	last := len(ivs) - 1
+	if last >= 0 && ivs[last].Position == "standing" && ivs[last].Duration > max {
+		// a single standing block longer than the cap: ride the front of it
+		// seated and stand only for the finish
+		head := ivs[last]
+		head.Duration -= max
+		head.Position = "seated"
+		ivs[last].Duration = max
+		ivs = append(ivs[:last], head, ivs[last])
+		last = len(ivs) - 1
+	}
+	if last >= 0 && ivs[last].Position == "standing" {
+		tail := ivs[last].Duration
+		for i := last - 1; i >= 0 && ivs[i].Position == "standing"; i-- {
+			if tail+ivs[i].Duration > max {
+				ivs[i].Position = "seated"
+				break
+			}
+			tail += ivs[i].Duration
+		}
 	}
 	return ivs
 }
@@ -297,8 +332,8 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 					pos = "standing"
 				}
 				cad := [2]int{c1, c2}
-				if pos == "standing" && c1 > o.StandingCadenceMax {
-					cad = [2]int{64, 65} // out of the saddle is a climbing cadence
+				if pos == "standing" {
+					cad = standingCadence(cad, o)
 				}
 				ivs = append(ivs, spec.Interval{
 					Duration:  int(s.Duration),
@@ -310,7 +345,6 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 			ivs = markACC(mergeIdentical(ivs), rk, o.ACCShare)
 			out.Intervals = append(out.Intervals, ivs...)
 		}
-		out.Intervals = breakStanding(out.Intervals, o.MaxStanding)
 		if o.EndHot && len(out.Intervals) > 0 && sg.Type != "recovery" && sg.Type != "cooldown" {
 			top := ladder[len(ladder)-1] // fire
 			if sg.Type == "warmup" {
@@ -323,10 +357,9 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 				last.Cycle = "" // ACC overrules RPM, so a promoted burst needs a cadence back
 				last.Cadence = [2]int{64, 65}
 			}
-			if last.Cadence[0] > o.StandingCadenceMax {
-				last.Cadence = [2]int{64, 65}
-			}
+			last.Cadence = standingCadence(last.Cadence, o)
 		}
+		out.Intervals = breakStanding(out.Intervals, o.MaxStanding)
 		c.Segments = append(c.Segments, out)
 	}
 	return c
