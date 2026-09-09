@@ -47,6 +47,20 @@ func playlistHydrated(p mowl.Playlist, want int) bool {
 // bpmComplete reports whether every track has a non-zero BPM (Tempo).
 func bpmComplete(p mowl.Playlist) bool { return missingBPM(p) == 0 }
 
+// missingDurations counts tracks whose duration has not populated yet. A
+// playlist imported moments ago can report tracks with a zero duration; those
+// tracks fail course validation with a confusing "tracks are 0s", so callers
+// warn about them explicitly.
+func missingDurations(p mowl.Playlist) int {
+	n := 0
+	for _, t := range p.Tracks {
+		if t.DurationMs <= 0 {
+			n++
+		}
+	}
+	return n
+}
+
 // missingBPM counts tracks whose BPM has not populated yet.
 func missingBPM(p mowl.Playlist) int {
 	n := 0
