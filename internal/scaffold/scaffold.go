@@ -44,12 +44,23 @@ type Options struct {
 	MaxSection int  // sections longer than this split into equal parts
 	EndHot     bool // work segments end on their hardest zone
 	Crossfade  int  // seconds each track overlaps the next (see spec.Crossfade)
+
+	// MaxStanding bounds one unbroken standing run. Real MOWL rides stand for
+	// about 30s at a time and rarely past 90s: you cannot hold a long one.
+	MaxStanding int
+	// StandingCadenceMax caps cadence while out of the saddle. Standing
+	// cadence in MOWL's own rides tops out in the high 70s.
+	StandingCadenceMax int
+	// ACCShare is roughly the fraction of work intervals marked as
+	// acceleration bursts.
+	ACCShare float64
 }
 
 // Defaults returns the option set used when flags are left alone.
 func Defaults() Options {
 	return Options{TargetTSS: 75, MinSection: 13, MaxSection: 180, EndHot: true,
-		Crossfade: spec.DefaultCrossfadeSec}
+		Crossfade: spec.DefaultCrossfadeSec, MaxStanding: 60,
+		StandingCadenceMax: 78, ACCShare: 0.10}
 }
 
 // zone bands, low to high, as [from,to] %FTP; index is the ladder position
@@ -65,7 +76,11 @@ func bandFor(segType string) (lo, hi int) {
 	case "recovery", "cooldown":
 		return 0, 1
 	}
-	return 1, 4
+	// Work sits between blue and yellow. Red and fire are accents the segment
+	// ending places deliberately: MOWL's own rides spend about 11% of their
+	// time at zone 5 or above, and letting the body reach red pushes the
+	// loudness curve to extremes, hollowing out the green and yellow middle.
+	return 1, 3
 }
 
 // cadenceFor picks one cadence for a whole track by dividing its BPM until it
@@ -80,7 +95,7 @@ func cadenceFor(bpm int, segType string) (int, int) {
 		target = 65.0
 	}
 	best, bestErr := 0.0, math.MaxFloat64
-	for _, div := range []float64{1, 1.5, 2, 3, 4} {
+	for _, div := range []float64{1, 2, 4} {
 		v := float64(bpm) / div
 		if v < 55 || v > 110 {
 			continue
@@ -164,6 +179,78 @@ func rank(secs []Section) []float64 {
 	return out
 }
 
+// mergeIdentical collapses neighbouring intervals that ask for exactly the
+// same thing. A split the rider cannot act on reads as a cue to change
+// something and then turns out not to be one, so the only splits worth keeping
+// are the ones where something actually changes.
+func mergeIdentical(ivs []spec.Interval) []spec.Interval {
+	out := ivs[:0:0]
+	for _, iv := range ivs {
+		if n := len(out); n > 0 {
+			p := &out[n-1]
+			if p.Cadence == iv.Cadence && p.Intensity == iv.Intensity &&
+				p.Position == iv.Position && p.Cycle == iv.Cycle {
+				p.Duration += iv.Duration
+				continue
+			}
+		}
+		out = append(out, iv)
+	}
+	return out
+}
+
+// breakStanding sits the rider back down once a standing run reaches the cap.
+func breakStanding(ivs []spec.Interval, max int) []spec.Interval {
+	run := 0
+	for i := range ivs {
+		if ivs[i].Position != "standing" {
+			run = 0
+			continue
+		}
+		if run+ivs[i].Duration > max {
+			ivs[i].Position = "seated"
+			run = 0
+			continue
+		}
+		run += ivs[i].Duration
+	}
+	return ivs
+}
+
+// markACC turns a track's loudest short section into an acceleration burst:
+// same gear, higher RPM. ACC overrules RPM, so the cadence is cleared.
+func markACC(ivs []spec.Interval, rk []float64, share float64) []spec.Interval {
+	if share <= 0 || len(ivs) == 0 {
+		return ivs
+	}
+	best, bestRank := -1, 0.0
+	for i, iv := range ivs {
+		if iv.Duration < 15 || iv.Duration > 45 || iv.Position != "seated" {
+			continue
+		}
+		if i < len(rk) && rk[i] > bestRank {
+			best, bestRank = i, rk[i]
+		}
+	}
+	if best >= 0 {
+		ivs[best].Cycle = "acc"
+		ivs[best].Cadence = [2]int{0, 0}
+		// a burst is harder than the block around it; this is where a ride
+		// gets its time above threshold, rather than from long red stretches
+		for k, band := range ladder {
+			if band[0] == ivs[best].Intensity.From && k+1 < len(ladder) {
+				up := ladder[k+1]
+				if up[0] > ladder[4][0] {
+					up = ladder[4]
+				}
+				ivs[best].Intensity = spec.IntensityValue{From: up[0], To: up[1]}
+				break
+			}
+		}
+	}
+	return ivs
+}
+
 // build lays out the whole course at one gamma. Raising gamma pushes more
 // sections toward the bottom of the band while leaving the loudest at the top,
 // which lowers overall TSS without flattening the ride.
@@ -172,11 +259,31 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 	for _, sg := range segs {
 		lo, hi := bandFor(sg.Type)
 		out := spec.Segment{Name: sg.Name, Type: sg.Type, Tracks: sg.Tracks}
+		if sg.Type == "recovery" || sg.Type == "cooldown" {
+			// MOWL models both as a single soft interval, not a block of them
+			total, bpm := 0, 0
+			for _, ti := range sg.Tracks {
+				total += tracks[ti].DurationSec
+				if bpm == 0 {
+					bpm = tracks[ti].BPM
+				}
+			}
+			c1, c2 := cadenceFor(bpm, sg.Type)
+			out.Intervals = []spec.Interval{{
+				Duration:  total,
+				Cadence:   [2]int{c1, c2},
+				Intensity: spec.IntensityValue{From: ladder[0][0], To: ladder[0][1]},
+				Position:  "seated",
+			}}
+			c.Segments = append(c.Segments, out)
+			continue
+		}
 		for _, ti := range sg.Tracks {
 			t := tracks[ti]
 			secs := sectionsOf(t, o)
 			rk := rank(secs)
 			c1, c2 := cadenceFor(t.BPM, sg.Type)
+			var ivs []spec.Interval
 			for i, s := range secs {
 				top := hi
 				if sg.Type == "warmup" && len(secs) > 1 { // ease the ceiling up
@@ -189,14 +296,21 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 				if (sg.Type == "climb" && rk[i] > 0.72) || (k >= 4 && rk[i] > 0.85) {
 					pos = "standing"
 				}
-				out.Intervals = append(out.Intervals, spec.Interval{
+				cad := [2]int{c1, c2}
+				if pos == "standing" && c1 > o.StandingCadenceMax {
+					cad = [2]int{64, 65} // out of the saddle is a climbing cadence
+				}
+				ivs = append(ivs, spec.Interval{
 					Duration:  int(s.Duration),
-					Cadence:   [2]int{c1, c2},
+					Cadence:   cad,
 					Intensity: spec.IntensityValue{From: band[0], To: band[1]},
 					Position:  pos,
 				})
 			}
+			ivs = markACC(mergeIdentical(ivs), rk, o.ACCShare)
+			out.Intervals = append(out.Intervals, ivs...)
 		}
+		out.Intervals = breakStanding(out.Intervals, o.MaxStanding)
 		if o.EndHot && len(out.Intervals) > 0 && sg.Type != "recovery" && sg.Type != "cooldown" {
 			top := ladder[len(ladder)-1] // fire
 			if sg.Type == "warmup" {
@@ -205,6 +319,13 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 			last := &out.Intervals[len(out.Intervals)-1]
 			last.Intensity = spec.IntensityValue{From: top[0], To: top[1]}
 			last.Position = "standing"
+			if last.Cycle == "acc" || last.Cadence[0] == 0 {
+				last.Cycle = "" // ACC overrules RPM, so a promoted burst needs a cadence back
+				last.Cadence = [2]int{64, 65}
+			}
+			if last.Cadence[0] > o.StandingCadenceMax {
+				last.Cadence = [2]int{64, 65}
+			}
 		}
 		c.Segments = append(c.Segments, out)
 	}
@@ -290,7 +411,9 @@ func ParseSegment(s string) (SegmentSpec, error) {
 		return SegmentSpec{}, fmt.Errorf("segment %q: want Name:type:tracks (e.g. \"Warmup:warmup:1-3\")", s)
 	}
 	out := SegmentSpec{Name: strings.TrimSpace(parts[0]), Type: strings.TrimSpace(parts[1])}
-	if out.Name == "" {
+	// MOWL leaves its active-recovery and cooldown segments unnamed; work
+	// segments are the ones the rider sees called out.
+	if out.Name == "" && out.Type != "recovery" && out.Type != "cooldown" {
 		return SegmentSpec{}, fmt.Errorf("segment %q: empty name", s)
 	}
 	if _, ok := mowl.SegmentTypeAlias[out.Type]; !ok {

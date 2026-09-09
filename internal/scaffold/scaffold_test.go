@@ -192,3 +192,148 @@ func evenSections(total int) []Section {
 	}
 	return out
 }
+
+func longTrack(idx, bpm, dur int) Track {
+	return Track{Index: idx, BPM: bpm, DurationSec: dur, Sections: evenSections(dur)}
+}
+
+func allIntervals(c spec.Course) []spec.Interval {
+	var out []spec.Interval
+	for _, s := range c.Segments {
+		out = append(out, s.Intervals...)
+	}
+	return out
+}
+
+func TestCadenceNeverUsesTwoThirds(t *testing.T) {
+	// 186 BPM at two-thirds is 124 and at three-halves 93; only full/half/quarter are allowed
+	for _, bpm := range []int{186, 128, 126, 134, 148, 170, 175} {
+		c1, _ := cadenceFor(bpm, "intervals")
+		for _, bad := range []int{int(float64(bpm) * 2 / 3), bpm / 3} {
+			if bad >= 55 && bad <= 110 && c1 == bad {
+				t.Errorf("bpm %d rode at %d, which is a two-thirds or one-third multiple", bpm, c1)
+			}
+		}
+	}
+}
+
+func TestStandingNeverExceedsCadenceCap(t *testing.T) {
+	o := Defaults()
+	c, _, err := Build([]Track{longTrack(1, 186, 300), longTrack(2, 175, 300)},
+		[]SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1, 2}}}, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, iv := range allIntervals(c) {
+		if iv.Position == "standing" && iv.Cadence[0] > o.StandingCadenceMax {
+			t.Fatalf("standing at %d rpm, cap is %d", iv.Cadence[0], o.StandingCadenceMax)
+		}
+	}
+}
+
+func TestNoStandingIntervalHasZeroCadence(t *testing.T) {
+	c, _, err := Build([]Track{longTrack(1, 124, 400), longTrack(2, 130, 400)},
+		[]SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1, 2}}}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, iv := range allIntervals(c) {
+		if iv.Position == "standing" && iv.Cadence[0] == 0 && iv.Cycle != "acc" {
+			t.Fatalf("standing interval has no cadence: %+v", iv)
+		}
+	}
+}
+
+func TestStandingRunsAreBroken(t *testing.T) {
+	o := Defaults()
+	c, _, err := Build([]Track{longTrack(1, 124, 600)},
+		[]SegmentSpec{{Name: "C", Type: "climb", Tracks: []int{1}}}, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := 0
+	for _, iv := range allIntervals(c) {
+		if iv.Position == "standing" {
+			run += iv.Duration
+			if run > o.MaxStanding {
+				t.Fatalf("standing run reached %ds, cap is %ds", run, o.MaxStanding)
+			}
+		} else {
+			run = 0
+		}
+	}
+}
+
+func TestNoAdjacentIdenticalIntervals(t *testing.T) {
+	c, _, err := Build([]Track{longTrack(1, 124, 400)},
+		[]SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1}}}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ivs := c.Segments[0].Intervals
+	for i := 1; i < len(ivs); i++ {
+		a, b := ivs[i-1], ivs[i]
+		if a.Cadence == b.Cadence && a.Intensity == b.Intensity && a.Position == b.Position && a.Cycle == b.Cycle {
+			t.Fatalf("intervals %d and %d are identical: %+v", i-1, i, a)
+		}
+	}
+}
+
+func TestRecoveryAndCooldownAreOneSoftInterval(t *testing.T) {
+	c, _, err := Build([]Track{longTrack(1, 120, 300), longTrack(2, 120, 100), longTrack(3, 120, 240)},
+		[]SegmentSpec{
+			{Name: "M", Type: "intervals", Tracks: []int{1}},
+			{Name: "", Type: "recovery", Tracks: []int{2}},
+			{Name: "", Type: "cooldown", Tracks: []int{3}},
+		}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range c.Segments[1:] {
+		if len(s.Intervals) != 1 {
+			t.Fatalf("%s segment has %d intervals, want 1", s.Type, len(s.Intervals))
+		}
+		if s.Intervals[0].Intensity.To > 55 {
+			t.Fatalf("%s segment rides at %v, want zone 1", s.Type, s.Intervals[0].Intensity)
+		}
+	}
+}
+
+func TestACCIntervalsAreShortSeatedAndCadenceFree(t *testing.T) {
+	c, _, err := Build([]Track{longTrack(1, 124, 400), longTrack(2, 130, 400), longTrack(3, 118, 400)},
+		[]SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1, 2, 3}}}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ivs := allIntervals(c)
+	var acc int
+	for _, iv := range ivs {
+		if iv.Cycle != "acc" {
+			continue
+		}
+		acc++
+		if iv.Position != "seated" {
+			t.Errorf("ACC interval is %s, want seated", iv.Position)
+		}
+		if iv.Cadence[0] != 0 {
+			t.Errorf("ACC interval sets cadence %d; ACC overrules RPM so it must be 0", iv.Cadence[0])
+		}
+		if iv.Duration > 60 {
+			t.Errorf("ACC interval is %ds, want a short burst", iv.Duration)
+		}
+	}
+	if acc == 0 {
+		t.Fatal("no ACC intervals were emitted")
+	}
+}
+
+func TestParseSegmentAllowsUnnamedRecoveryAndCooldown(t *testing.T) {
+	for _, in := range []string{":recovery:8", ":cooldown:16"} {
+		if _, err := ParseSegment(in); err != nil {
+			t.Errorf("ParseSegment(%q) = %v; MOWL's own recovery and cooldown segments are unnamed", in, err)
+		}
+	}
+	if _, err := ParseSegment(":intervals:1-3"); err == nil {
+		t.Error("a work segment still needs a name")
+	}
+}
