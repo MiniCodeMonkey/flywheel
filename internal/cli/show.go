@@ -23,8 +23,10 @@ func zoneBandName(zone int) string {
 		return "yellow"
 	case 5:
 		return "red"
-	case 6, 7:
+	case 6:
 		return "fire"
+	case 7:
+		return "owl"
 	}
 	return "?"
 }
