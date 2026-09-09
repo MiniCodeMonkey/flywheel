@@ -49,8 +49,21 @@ func Validate(c Course, tracks map[int]TrackInfo, segTypes, positions map[string
 	if diff := courseIntervalSec - courseTrackSec; diff < -tolSec || diff > tolSec {
 		errs = append(errs, fmt.Errorf("course intervals sum to %ds but the playlist is %ds (±%ds)", courseIntervalSec, courseTrackSec, tolSec))
 	}
+	// Tracks past the last one a segment claims are the cooldown tail: the
+	// program ends hot and the music plays on while the rider spins down. A
+	// gap *before* the last covered track is still an error, because MOWL
+	// aligns by elapsed time and everything after the gap would shift.
+	lastCovered := 0
+	for idx, n := range seen {
+		if n > 0 && idx > lastCovered {
+			lastCovered = idx
+		}
+	}
+	if lastCovered == 0 && len(tracks) > 0 {
+		errs = append(errs, fmt.Errorf("no segment covers any playlist track"))
+	}
 	for idx := range tracks {
-		if seen[idx] == 0 {
+		if seen[idx] == 0 && idx < lastCovered {
 			errs = append(errs, fmt.Errorf("track %d is not covered by any segment", idx))
 		}
 		if seen[idx] > 1 {

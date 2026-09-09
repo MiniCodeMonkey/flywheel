@@ -147,12 +147,14 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 | `segments[].intervals[].intensity` | number or [number,number] | **% of FTP.** A scalar is steady state; `[from,to]` is a ramp. |
 | `segments[].intervals[].position` | enum | `seated` / `standing` / … (see `flywheel lookups`). |
 
-Validation (`preview` and `apply`): every playlist track is assigned to
-exactly one segment; the whole course's interval durations sum to the
-playlist's real length (±5s tolerance); an individual segment may start or
-end mid-track, drifting up to 120s from the tracks it claims, which is what
-lets an active recovery run 45s inside a four-minute song; segment `type` and
-`position` must resolve to valid MOWL IDs.
+Validation (`preview` and `apply`): each playlist track up to the last one a
+segment claims is assigned to exactly one segment, and the course's interval
+durations sum to those tracks' real length (±5s tolerance). Tracks after that
+may be left uncovered — they are the cooldown tail, which keeps playing once
+the program ends. An individual segment may start or end mid-track, drifting
+up to 120s from the tracks it claims, which is what lets an active recovery
+run 45s inside a four-minute song. Segment `type` and `position` must resolve
+to valid MOWL IDs.
 
 ## `styles.yaml`
 

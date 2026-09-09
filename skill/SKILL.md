@@ -153,6 +153,10 @@ overshoots badly.
   of the preceding track, where the song is already backing off.
 - The **program ends hot**, on red or above — never on a recovery or cooldown
   segment. The cooldown happens after the program, not inside it.
+- Give the playlist a **cooldown tail**: leave the last track (or two)
+  uncovered by any segment. The program ends on its hot interval and the
+  music plays on while the rider spins down. Validation allows uncovered
+  tracks only at the end; a gap earlier shifts everything after it.
 
 ## Things that will bite you
 

@@ -36,12 +36,14 @@ func TestValidateDurationMismatch(t *testing.T) {
 	}
 }
 
-func TestValidateUncoveredTrack(t *testing.T) {
+func TestValidateUncoveredInteriorTrack(t *testing.T) {
 	c := baseCourse()
-	c.Segments = c.Segments[:1] // drops track 2
+	c.Segments[1].Tracks = []int{3} // track 2 skipped, track 3 still covered
+	c.Segments[1].Intervals[0].Duration = 160
 	tr, st, ps := fixtures()
+	tr[3] = TrackInfo{DurationSec: 160}
 	if errs := Validate(c, tr, st, ps, 5); len(errs) == 0 {
-		t.Fatal("expected uncovered-track error")
+		t.Fatal("expected uncovered-track error for a gap before a covered track")
 	}
 }
 
@@ -82,5 +84,26 @@ func TestValidateRejectsCourseTotalMismatch(t *testing.T) {
 	errs := Validate(c, tr, st, ps, 5)
 	if len(errs) == 0 {
 		t.Fatal("expected a course total error")
+	}
+}
+
+func TestValidateAllowsUncoveredCooldownTail(t *testing.T) {
+	c := baseCourse()
+	c.Segments = c.Segments[:1] // track 2 is left to play out as the cooldown
+	tr, st, ps := fixtures()
+	if errs := Validate(c, tr, st, ps, 5); len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+}
+
+func TestValidateRejectsGapBeforeCoveredTrack(t *testing.T) {
+	c := baseCourse()
+	c.Segments[0].Tracks = []int{2} // track 1 skipped, track 2 covered
+	c.Segments[1].Tracks = []int{}
+	c.Segments[0].Intervals[0].Duration = 180
+	c.Segments[1].Intervals[0].Duration = 0
+	tr, st, ps := fixtures()
+	if errs := Validate(c, tr, st, ps, 5); len(errs) == 0 {
+		t.Fatal("expected an error for a skipped track before a covered one")
 	}
 }
