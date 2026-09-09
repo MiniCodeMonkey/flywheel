@@ -36,13 +36,31 @@ Every subcommand accepts `--json`; prefer it when parsing programmatically.
    Always pass `--sections`: it returns each track's musical sections with
    `start`, `duration` and `loudness`, which is the data that makes a ride
    follow the music instead of a stopwatch.
-4. **Author `course.yaml`** using the design method below.
+4. **Scaffold `course.yaml`**, then edit it. `flywheel scaffold` applies the
+   whole design method below in one command:
+
+   ```
+   flywheel scaffold <spotify-id> --tss 75 \
+     --segment "Roll Out:warmup:1-3" \
+     --segment "Hammer Climbs:climb:4-7" \
+     --segment "Active Recovery:recovery:8" \
+     --segment "Bass Intervals:intervals:9-12" \
+     --segment "Active Recovery 2:recovery:13"
+   ```
+
+   Segments are `Name:type:tracks`, repeatable, in ride order; tracks accept
+   ranges and lists (`4-7`, `1,3,5`). It writes `course.yaml` and reports the
+   estimated TSS. Treat the output as a starting point and hand-edit it --
+   the scaffolder cannot hear the song, so move blocks where the music
+   argues for it. Read the method below before editing.
 5. **Preview and iterate:** `flywheel preview course.yaml`. Never writes.
 6. **Apply:** `flywheel apply course.yaml`. Report the program ID and the
    server-computed TSS.
 
-Other commands: `flywheel list`, `flywheel delete <program-id>`,
-`flywheel lookups` (valid segment/position/activity types — don't guess).
+Other commands: `flywheel list`, `flywheel show <program-id> [--intervals]`
+(read a program back from MOWL to confirm what was actually stored),
+`flywheel delete <program-id>`, `flywheel lookups` (valid segment/position/
+activity types — don't guess).
 
 ## Design method
 
@@ -59,6 +77,12 @@ because songs do.
 Fold any section shorter than ~13s into its neighbour, carrying loudness as
 the duration-weighted mean. Sub-13s blocks are unrideable and MOWL's own
 rides don't use them.
+
+Long blocks are fine. A 2-minute, 2.5-minute or even 3-minute effort is a
+normal thing to ask for, and around 3 minutes is the usual upper limit before
+a block stops feeling like an interval. This is a style choice, not a rule --
+some instructors ride long, some ride short. `scaffold --max-section` splits
+anything longer (default 180s); pass `0` to never split.
 
 ### Drive intensity from loudness, not position in the ride
 
@@ -78,7 +102,8 @@ Two approaches that look reasonable and are wrong:
   with a 14-second burst at fire and the big outro at blue.
 - **Compressing the zone range** flattens the whole ride into two zones.
 
-Tune the gamma until TSS lands. It preserves the ordering.
+Tune the gamma until TSS lands. It preserves the ordering. `flywheel
+scaffold` does this search for you and prints the gamma it settled on.
 
 ### Cadence is per track, not per interval
 
@@ -139,6 +164,9 @@ overshoots badly.
   agree within ~1%. Target ~5% above the number you want and confirm against
   `apply`'s server TSS, which is authoritative.
 - **Playlist name comes back empty** from the hydrate endpoint; cosmetic.
+
+Use `flywheel show <program-id> --intervals` to settle any question about
+what MOWL actually stored, rather than reasoning from the spec alone.
 
 ## `course.yaml` reference
 
