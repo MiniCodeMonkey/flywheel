@@ -12,7 +12,7 @@ func NewRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	root.PersistentFlags().Bool("json", false, "machine-readable JSON output")
-	root.AddCommand(newInitCmd(), newAuthCmd(), newInspectCmd(), newPreviewCmd(),
+	root.AddCommand(newInitCmd(), newAuthCmd(), newInspectCmd(), newPreviewCmd(), newSimulateCmd(),
 		newApplyCmd(), newListCmd(), newDeleteCmd(), newLookupsCmd(),
 		newVersionCmd(), newShowCmd(), newScaffoldCmd())
 	return root

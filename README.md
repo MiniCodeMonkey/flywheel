@@ -116,6 +116,7 @@ output.
 | `flywheel auth login` | Authenticate with MOWL (`--email`, or prompts; password via `MOWL_PASSWORD` env var or a prompt) and cache a session token. |
 | `flywheel playlist inspect <spotify-id>` | Import/read a Spotify playlist via MOWL and print each track's index, title, artist, BPM, and duration. `--sections` also fetches each track's musical sections with start, duration and loudness — the data a ride needs to follow the music. `--wait` (default 3m) bounds how long to wait for a freshly imported playlist to finish indexing. |
 | `flywheel preview <course.yaml>` | Validate and render a course's timeline, per-segment breakdown, and estimated TSS — no writes. |
+| `flywheel simulate <course.yaml>` | Walk a course against the music it will actually play and report what does not line up: boundary alignment, whether the hard part lands on the loud part, rideability, monotony. Deterministic, never writes, never fails a ride. `--tolerance` sets how far a boundary may sit from a musical one (default 3s). |
 | `flywheel scaffold <spotify-id> --segment "Name:type:1-3"` | Generate a `course.yaml` whose intervals follow the music: one interval per musical section, intensity driven by each section's loudness relative to its own track. Tunes toward `--tss`. |
 | `flywheel show <program-id>` | Read a program back from MOWL with its segments and intervals; `--intervals` prints every one. |
 | `flywheel apply <course.yaml>` | Validate and create a course in MOWL, replacing any same-named program; reports the server-computed TSS. |

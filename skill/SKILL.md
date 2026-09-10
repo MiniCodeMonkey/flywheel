@@ -54,6 +54,14 @@ Every subcommand accepts `--json`; prefer it when parsing programmatically.
    the scaffolder cannot hear the song, so move blocks where the music
    argues for it. Read the method below before editing.
 5. **Preview and iterate:** `flywheel preview course.yaml`. Never writes.
+5b. **Simulate:** `flywheel simulate course.yaml`. `preview` says the course is
+   valid; `simulate` says whether it is any good. It walks the ride against the
+   real music and reports the share of interval boundaries landing on a musical
+   section boundary, the correlation between how hard a block is and how loud
+   the music under it is, cadence jumps inside a song, position flapping, and
+   the longest stretch at one zone. Aim for **alignment above 95%** and a
+   **loudness match above +0.5**; both are achievable and every shipped ride
+   hits them. Its output is deterministic, so diff it between runs.
 6. **Apply:** `flywheel apply course.yaml`. Report the program ID and the
    server-computed TSS.
 
