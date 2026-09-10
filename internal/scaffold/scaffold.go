@@ -258,16 +258,31 @@ func markACC(ivs []spec.Interval, rk []float64, share float64) []spec.Interval {
 	if share <= 0 || len(ivs) == 0 {
 		return ivs
 	}
-	best, bestRank := -1, 0.0
+	want := int(math.Round(share * float64(len(ivs))))
+	if want < 1 {
+		want = 1
+	}
+	type cand struct {
+		i int
+		r float64
+	}
+	var cands []cand
 	for i, iv := range ivs {
-		if iv.Duration < 15 || iv.Duration > 45 || iv.Position != "seated" {
+		if iv.Duration < 15 || iv.Duration > 60 || iv.Position != "seated" {
 			continue
 		}
-		if i < len(rk) && rk[i] > bestRank {
-			best, bestRank = i, rk[i]
+		r := 0.0
+		if i < len(rk) {
+			r = rk[i]
 		}
+		cands = append(cands, cand{i, r})
 	}
-	if best >= 0 {
+	sort.Slice(cands, func(a, b int) bool { return cands[a].r > cands[b].r })
+	if len(cands) > want {
+		cands = cands[:want]
+	}
+	for _, c := range cands {
+		best := c.i
 		ivs[best].Cycle = "acc"
 		ivs[best].Cadence = [2]int{0, 0}
 		// a burst is harder than the block around it; this is where a ride
