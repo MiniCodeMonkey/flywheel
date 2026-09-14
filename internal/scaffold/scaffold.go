@@ -201,13 +201,13 @@ func mergeIdentical(ivs []spec.Interval) []spec.Interval {
 	return out
 }
 
-// standingCadence pulls a cadence into the range a rider can actually hold out
-// of the saddle.
-func standingCadence(c [2]int, o Options) [2]int {
-	if c[0] < o.StandingCadenceMin || c[0] > o.StandingCadenceMax {
-		return [2]int{64, 65}
-	}
-	return c
+// canStand reports whether a track's cadence is one a rider can hold out of
+// the saddle. A song does not change tempo, so its cadence is fixed for the
+// whole track: when that cadence is too fast or too slow to stand at, the
+// answer is to stay seated for this song, never to invent a second cadence
+// inside it.
+func canStand(cadence int, o Options) bool {
+	return cadence >= o.StandingCadenceMin && cadence <= o.StandingCadenceMax
 }
 
 // breakStanding sits the rider back down once a standing run reaches the cap.
@@ -283,20 +283,11 @@ func markACC(ivs []spec.Interval, rk []float64, share float64) []spec.Interval {
 	}
 	for _, c := range cands {
 		best := c.i
+		// ACC is "short bursts in the same gear, but with higher RPM": it is an
+		// acceleration, not a power step. Promoting its zone made every burst
+		// cost TSS, which forced the loudness curve flat to compensate.
 		ivs[best].Cycle = "acc"
 		ivs[best].Cadence = [2]int{0, 0}
-		// a burst is harder than the block around it; this is where a ride
-		// gets its time above threshold, rather than from long red stretches
-		for k, band := range ladder {
-			if band[0] == ivs[best].Intensity.From && k+1 < len(ladder) {
-				up := ladder[k+1]
-				if up[0] > ladder[4][0] {
-					up = ladder[4]
-				}
-				ivs[best].Intensity = spec.IntensityValue{From: up[0], To: up[1]}
-				break
-			}
-		}
 	}
 	return ivs
 }
@@ -344,12 +335,11 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 				band := ladder[k]
 				pos := "seated"
 				if (sg.Type == "climb" && rk[i] > 0.72) || (k >= 4 && rk[i] > 0.85) {
-					pos = "standing"
+					if canStand(c1, o) {
+						pos = "standing"
+					}
 				}
 				cad := [2]int{c1, c2}
-				if pos == "standing" {
-					cad = standingCadence(cad, o)
-				}
 				ivs = append(ivs, spec.Interval{
 					Duration:  int(s.Duration),
 					Cadence:   cad,
@@ -367,12 +357,18 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 			}
 			last := &out.Intervals[len(out.Intervals)-1]
 			last.Intensity = spec.IntensityValue{From: top[0], To: top[1]}
-			last.Position = "standing"
 			if last.Cycle == "acc" || last.Cadence[0] == 0 {
 				last.Cycle = "" // ACC overrules RPM, so a promoted burst needs a cadence back
-				last.Cadence = [2]int{64, 65}
+				for i := len(out.Intervals) - 2; i >= 0; i-- {
+					if c := out.Intervals[i].Cadence; c[0] > 0 {
+						last.Cadence = c // this track's own cadence, not an invented one
+						break
+					}
+				}
 			}
-			last.Cadence = standingCadence(last.Cadence, o)
+			if canStand(last.Cadence[0], o) {
+				last.Position = "standing"
+			}
 		}
 		out.Intervals = breakStanding(out.Intervals, o.MaxStanding)
 		c.Segments = append(c.Segments, out)

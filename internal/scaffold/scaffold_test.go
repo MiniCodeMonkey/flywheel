@@ -337,3 +337,40 @@ func TestParseSegmentAllowsUnnamedRecoveryAndCooldown(t *testing.T) {
 		t.Error("a work segment still needs a name")
 	}
 }
+
+func TestCadenceIsConstantWithinATrack(t *testing.T) {
+	// one track, so every interval must ask for the same rpm: a song does not
+	// change tempo, so the rider should never be told to change cadence inside it
+	c, _, err := Build([]Track{longTrack(1, 186, 420)},
+		[]SegmentSpec{{Name: "M", Type: "climb", Tracks: []int{1}}}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[int]bool{}
+	for _, iv := range allIntervals(c) {
+		if iv.Cadence[0] > 0 { // ACC leaves cadence unset, which is not a change
+			seen[iv.Cadence[0]] = true
+		}
+	}
+	if len(seen) != 1 {
+		t.Fatalf("cadence changes inside one track: %v", seen)
+	}
+}
+
+func TestFastTracksStaySeatedRatherThanChangingCadence(t *testing.T) {
+	o := Defaults()
+	// 186 BPM rides at 93, too fast to stand; the ride should sit, not slow down
+	c, _, err := Build([]Track{longTrack(1, 186, 420)},
+		[]SegmentSpec{{Name: "C", Type: "climb", Tracks: []int{1}}}, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, iv := range allIntervals(c) {
+		if iv.Position == "standing" && iv.Cadence[0] > o.StandingCadenceMax {
+			t.Fatalf("standing at %d rpm, above the %d cap: %+v", iv.Cadence[0], o.StandingCadenceMax, iv)
+		}
+		if iv.Cadence[0] > 0 && iv.Cadence[0] != 93 {
+			t.Fatalf("cadence %d is not the track's own 93 rpm: %+v", iv.Cadence[0], iv)
+		}
+	}
+}

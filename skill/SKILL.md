@@ -88,6 +88,7 @@ designed from one that reads as generated.
 | Standing cadence | 60-78, never higher |
 | Seated cadence | 60-90, occasionally to 110 |
 | Cadence multiple | full or half BPM only -- **never two-thirds** |
+| Cadence within a track | **constant**; a song does not change tempo, so the rider is never told to change rpm inside one |
 | No cadence at all | ~15% of intervals |
 | ACC bursts | ~10% of intervals, ~27s, seated, cadence left at 0 |
 | Time at zone 5+ | ~11% |
@@ -103,6 +104,13 @@ Things that look right and are wrong:
   What the rider actually does is alternate, so write it that way.
 - **Riding a fast track at two-thirds tempo.** A 134 BPM track at 89 rpm is
   wrong; it is a 67 rpm climb.
+- **Dropping the rpm because the rider stands.** Cadence belongs to the song,
+  not the block. If a track is too fast to stand at, stay seated for that
+  song; never invent a second cadence inside one.
+- **Making ACC harder.** ACC is "short bursts in the same gear, but with
+  higher RPM" -- an acceleration, not a power step. Give it a zone bump and
+  every burst costs TSS, which forces the loudness curve flat to compensate
+  and hollows out the ride.
 - **Owl on every finale.** Reserve zone 7; the official rock rides never use it.
 
 ## Design method

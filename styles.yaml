@@ -8,6 +8,7 @@
 #   ACC bursts         ~10% of work intervals    (--acc)
 #   crossfade          9s per track transition   (--crossfade)
 #   cadence multiple   full or half BPM only, never two-thirds
+#   cadence per track   constant; too fast to stand at means stay seated
 road_cycling:            # steady road ride: higher RPM, seated, longer efforts
   position: seated
   cadence: [90, 100]
