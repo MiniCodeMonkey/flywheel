@@ -62,8 +62,13 @@ Every subcommand accepts `--json`; prefer it when parsing programmatically.
    the longest stretch at one zone. Aim for **alignment above 95%** and a
    **loudness match above +0.5**; both are achievable and every shipped ride
    hits them. Its output is deterministic, so diff it between runs.
-6. **Apply:** `flywheel apply course.yaml`. Report the program ID and the
-   server-computed TSS.
+6. **Apply:** `flywheel apply course.yaml`. It prints the music-alignment check
+   before writing anything, then creates the course. Report the program ID and
+   the server-computed TSS.
+
+A scaffolded `course.yaml` carries a `scaffold:` block recording the options
+that produced it. To rebuild a ride, read that block and rerun `scaffold` with
+those flags rather than reconstructing them by memory.
 
 Other commands: `flywheel list`, `flywheel show <program-id> [--intervals]`
 (read a program back from MOWL to confirm what was actually stored),

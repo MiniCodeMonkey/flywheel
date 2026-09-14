@@ -51,20 +51,28 @@ func TestLoudnessMatchIsPositiveWhenHardLandsOnLoud(t *testing.T) {
 	}
 }
 
-func TestRideabilityFlagsCadenceJumpAndFlapping(t *testing.T) {
+func TestRideabilityFlagsCadenceJump(t *testing.T) {
 	c := course(30, 30, 30, 30)
-	c.Segments[0].Intervals[1].Cadence = [2]int{110, 111} // 80 -> 110 across a boundary
-	c.Segments[0].Intervals[1].Position = "standing"
-	c.Segments[0].Intervals[2].Position = "seated"
-	c.Segments[0].Intervals[3].Position = "standing"
+	c.Segments[0].Intervals[1].Cadence = [2]int{110, 111} // 80 -> 110 inside one track
 	tl := Build(c, []Track{trk(1, 120, Section{Duration: 120, Loudness: -6})}, 0)
-	issues := tl.Rideability()
-	joined := strings.Join(issues, "\n")
-	if !strings.Contains(joined, "cadence") {
-		t.Errorf("expected a cadence jump to be flagged, got: %v", issues)
+	if !strings.Contains(strings.Join(tl.Rideability(), "\n"), "cadence") {
+		t.Errorf("expected a cadence jump to be flagged, got: %v", tl.Rideability())
 	}
-	if !strings.Contains(joined, "position") {
-		t.Errorf("expected position flapping to be flagged, got: %v", issues)
+}
+
+func TestAlternatingPositionIsNotAFault(t *testing.T) {
+	// 10s standing, 10s seated is interval work, not flapping
+	c := course(10, 10, 10, 10, 10, 10)
+	for i := range c.Segments[0].Intervals {
+		if i%2 == 1 {
+			c.Segments[0].Intervals[i].Position = "standing"
+		}
+	}
+	tl := Build(c, []Track{trk(1, 60, Section{Duration: 60, Loudness: -6})}, 0)
+	for _, s := range tl.Rideability() {
+		if strings.Contains(s, "position") {
+			t.Fatalf("alternating position was flagged: %v", s)
+		}
 	}
 }
 

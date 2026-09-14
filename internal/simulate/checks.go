@@ -153,20 +153,9 @@ func (t *Timeline) Rideability() []string {
 			}
 		}
 	}
-	// position flapping: three or more changes inside a minute
-	var changes []int
-	for i := 1; i < len(t.Blocks); i++ {
-		if t.Blocks[i].Position != t.Blocks[i-1].Position {
-			changes = append(changes, t.Blocks[i].Start)
-		}
-	}
-	for i := 2; i < len(changes); i++ {
-		if changes[i]-changes[i-2] <= 60 {
-			out = append(out, fmt.Sprintf("%s position changes 3 times in %ds",
-				clock(changes[i-2]), changes[i]-changes[i-2]))
-			i += 2
-		}
-	}
+	// Alternating in and out of the saddle quickly is interval work, not a
+	// fault -- 10s standing, 10s seated is a normal thing to ask for -- so
+	// there is deliberately no check for it.
 	run, runStart := 0, 0
 	for _, b := range t.Blocks {
 		if b.Position == "standing" {

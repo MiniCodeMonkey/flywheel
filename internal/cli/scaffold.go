@@ -85,6 +85,12 @@ Segments are given as Name:type:tracks, repeatable and in ride order:
 			}
 			course.Name, course.Category = name, category
 			course.Playlist.CrossfadeSec = &crossfade
+			course.Scaffold = &spec.Scaffold{
+				TSS: targetTSS, MinSection: minSection, MaxSection: maxSection,
+				EndHot: endHot, ACC: accShare, MaxStanding: maxStand,
+				StandingCadenceMin: scaffold.Defaults().StandingCadenceMin,
+				StandingCadenceMax: standCad, Segments: segFlags,
+			}
 			total := 0
 			for _, s := range course.Segments {
 				for _, iv := range s.Intervals {

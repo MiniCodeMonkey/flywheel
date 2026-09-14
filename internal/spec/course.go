@@ -3,13 +3,31 @@ package spec
 import "gopkg.in/yaml.v3"
 
 type Course struct {
-	Name     string    `yaml:"name"`
-	Category string    `yaml:"category"`
-	Activity string    `yaml:"activity"`
-	Targets  Targets   `yaml:"targets"`
-	Style    []string  `yaml:"style"`
-	Playlist Playlist  `yaml:"playlist"`
+	Name     string   `yaml:"name"`
+	Category string   `yaml:"category"`
+	Activity string   `yaml:"activity"`
+	Targets  Targets  `yaml:"targets"`
+	Style    []string `yaml:"style"`
+	Playlist Playlist `yaml:"playlist"`
+	// Scaffold records the options that produced this course, so the ride can
+	// be regenerated exactly rather than reconstructed by memory. Absent on a
+	// hand-written course.
+	Scaffold *Scaffold `yaml:"scaffold,omitempty"`
 	Segments []Segment `yaml:"segments"`
+}
+
+// Scaffold is the provenance of a generated course: everything `flywheel
+// scaffold` was told, so the same file can be rebuilt from it.
+type Scaffold struct {
+	TSS                int      `yaml:"tss"`
+	MinSection         int      `yaml:"min_section"`
+	MaxSection         int      `yaml:"max_section"`
+	EndHot             bool     `yaml:"end_hot"`
+	ACC                float64  `yaml:"acc"`
+	MaxStanding        int      `yaml:"max_standing"`
+	StandingCadenceMin int      `yaml:"standing_cadence_min"`
+	StandingCadenceMax int      `yaml:"standing_cadence_max"`
+	Segments           []string `yaml:"segments"`
 }
 
 type Targets struct {

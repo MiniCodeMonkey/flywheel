@@ -119,7 +119,7 @@ output.
 | `flywheel simulate <course.yaml>` | Walk a course against the music it will actually play and report what does not line up: boundary alignment, whether the hard part lands on the loud part, rideability, monotony. Deterministic, never writes, never fails a ride. `--tolerance` sets how far a boundary may sit from a musical one (default 3s). |
 | `flywheel scaffold <spotify-id> --segment "Name:type:1-3"` | Generate a `course.yaml` whose intervals follow the music: one interval per musical section, intensity driven by each section's loudness relative to its own track. Tunes toward `--tss`. |
 | `flywheel show <program-id>` | Read a program back from MOWL with its segments and intervals; `--intervals` prints every one. |
-| `flywheel apply <course.yaml>` | Validate and create a course in MOWL, replacing any same-named program; reports the server-computed TSS. |
+| `flywheel apply <course.yaml>` | Validate and create a course in MOWL, replacing any same-named program; reports the server-computed TSS. Prints the music-alignment check first; `--skip-check` skips it. |
 | `flywheel version` | Print the version and VCS revision the binary was built from — check this when `preview` numbers look wrong. |
 | `flywheel list` | List MOWL programs this account has created. |
 | `flywheel delete <program-id>` | Delete a created program (and its private category if empty). |
@@ -139,7 +139,8 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 | `targets.tss` | number | Target Training Stress Score. |
 | `style` | []string | Advisory tags (program-level), resolved via `styles.yaml`; written into the description, no direct MOWL field. |
 | `playlist.spotify_id` | string | Spotify playlist ID to import and link. |
-| `playlist.crossfade_sec` | number | Seconds each track overlaps the next; defaults to 10, which MOWL requires. See "Crossfade" below. |
+| `playlist.crossfade_sec` | number | Seconds each track overlaps the next; defaults to 9. See "Crossfade" below. |
+| `scaffold` | block | Written by `flywheel scaffold`: the options and segment specs that produced the file, so the ride can be regenerated exactly. Ignored when applying; absent on a hand-written course. |
 | `segments[].name` | string | Segment name. |
 | `segments[].type` | enum | One of `warmup`, `intervals`, `climb`, `tabata`, `recovery`, `cooldown` — maps to a MOWL segment category (and sets warmup/cooldown flags). |
 | `segments[].tracks` | []int | Song indices (from `playlist inspect`) this segment spans. |

@@ -19,8 +19,20 @@ func Render(c spec.Course, spotifyID string, targetMin, targetTSS int) string {
 	if len(c.Style) > 0 {
 		fmt.Fprintf(&b, "style: [%s]\n", strings.Join(c.Style, ", "))
 	}
-	fmt.Fprintf(&b, "playlist:\n  spotify_id: %q\n  crossfade_sec: %d\nsegments:\n",
+	fmt.Fprintf(&b, "playlist:\n  spotify_id: %q\n  crossfade_sec: %d\n",
 		spotifyID, c.Playlist.Crossfade())
+	if s := c.Scaffold; s != nil {
+		fmt.Fprintf(&b, "scaffold:                 # how this file was generated; rerun to rebuild it\n")
+		fmt.Fprintf(&b, "  tss: %d\n  min_section: %d\n  max_section: %d\n  end_hot: %t\n",
+			s.TSS, s.MinSection, s.MaxSection, s.EndHot)
+		fmt.Fprintf(&b, "  acc: %g\n  max_standing: %d\n  standing_cadence_min: %d\n  standing_cadence_max: %d\n",
+			s.ACC, s.MaxStanding, s.StandingCadenceMin, s.StandingCadenceMax)
+		fmt.Fprintf(&b, "  segments:\n")
+		for _, seg := range s.Segments {
+			fmt.Fprintf(&b, "    - %q\n", seg)
+		}
+	}
+	fmt.Fprintf(&b, "segments:\n")
 	for _, s := range c.Segments {
 		tracks := make([]string, len(s.Tracks))
 		for i, t := range s.Tracks {

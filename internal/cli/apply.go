@@ -2,17 +2,21 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/minicodemonkey/flywheel/internal/apply"
+	"github.com/minicodemonkey/flywheel/internal/mowl"
+	"github.com/minicodemonkey/flywheel/internal/simulate"
 	"github.com/minicodemonkey/flywheel/internal/spec"
 	"github.com/spf13/cobra"
 )
 
 func newApplyCmd() *cobra.Command {
+	var skipCheck bool
 	cmd := &cobra.Command{
 		Use:   "apply <course.yaml>",
 		Short: "Validate a course and create it in MOWL",
@@ -76,6 +80,10 @@ func newApplyCmd() *cobra.Command {
 			}
 			tracks = spec.CrossfadeTracks(tracks, course.Playlist.Crossfade())
 
+			if !skipCheck {
+				reportAlignment(cmd, ctx, cl, course, hydrated)
+			}
+
 			if errs := spec.Validate(course, tracks, segmentTypeMap(), positionMap(), 5); len(errs) > 0 {
 				for _, e := range errs {
 					fmt.Fprintln(cmd.ErrOrStderr(), "validation error:", e)
@@ -116,5 +124,34 @@ func newApplyCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&skipCheck, "skip-check", false,
+		"skip the music-alignment check before applying")
 	return cmd
+}
+
+// reportAlignment prints how well the ride follows its music before it is
+// created. It never blocks an apply: a course that cannot be analysed, or a
+// playlist whose analysis is unavailable, still applies.
+func reportAlignment(cmd *cobra.Command, ctx context.Context, cl *mowl.Client,
+	course spec.Course, pl mowl.Playlist) {
+	var tracks []simulate.Track
+	for i, tr := range pl.Tracks {
+		t := simulate.Track{Index: i + 1, Title: tr.Title, Artist: tr.Artist,
+			BPM: tr.BPM, DurationSec: tr.DurationMs / 1000}
+		secs, err := cl.AudioAnalysis(ctx, tr.SpotifyTrackID)
+		if err != nil {
+			return // analysis unavailable; say nothing rather than guess
+		}
+		for _, s := range secs {
+			t.Sections = append(t.Sections, simulate.Section{Duration: s.Duration, Loudness: s.Loudness})
+		}
+		tracks = append(tracks, t)
+	}
+	rep := simulate.Run(simulate.Build(&course, tracks, course.Playlist.Crossfade()), 3)
+	fmt.Fprintf(cmd.ErrOrStderr(),
+		"check: %.0f%% of boundaries land on the music, loudness match %+.2f, longest flat run %ds\n",
+		rep.Alignment.WithinTolerance*100, rep.Loudness, rep.Monotony)
+	for _, s := range rep.Issues {
+		fmt.Fprintln(cmd.ErrOrStderr(), "check:", s)
+	}
 }
