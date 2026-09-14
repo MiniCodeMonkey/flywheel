@@ -374,3 +374,34 @@ func TestFastTracksStaySeatedRatherThanChangingCadence(t *testing.T) {
 		}
 	}
 }
+
+func TestHotEndingLandsOnTheLoudestClosingSection(t *testing.T) {
+	// a track that fades out: the loud moment is before the end, so the fire
+	// accent belongs there, not on the fade
+	secs := []Section{
+		{Duration: 40, Loudness: -20}, {Duration: 40, Loudness: -14},
+		{Duration: 40, Loudness: -3},  // the peak
+		{Duration: 40, Loudness: -22}, // the fade
+	}
+	c, _, err := Build([]Track{{Index: 1, BPM: 120, DurationSec: 160, Sections: secs}},
+		[]SegmentSpec{{Name: "M", Type: "intervals", Tracks: []int{1}}}, Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ivs := c.Segments[0].Intervals
+	var fireAt = -1
+	for i, iv := range ivs {
+		if iv.Intensity.From == ladder[5][0] {
+			fireAt = i
+		}
+	}
+	if fireAt == len(ivs)-1 {
+		t.Fatalf("fire landed on the fade-out; intervals: %+v", ivs)
+	}
+	if fireAt < 0 {
+		t.Fatalf("no fire accent at all: %+v", ivs)
+	}
+	if last := ivs[len(ivs)-1]; last.Intensity.From < ladder[4][0] {
+		t.Errorf("segment should still finish at red or above, ended %v", last.Intensity)
+	}
+}

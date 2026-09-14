@@ -297,7 +297,15 @@ func markACC(ivs []spec.Interval, rk []float64, share float64) []spec.Interval {
 // which lowers overall TSS without flattening the ride.
 func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) spec.Course {
 	c := spec.Course{Activity: "cycling"}
-	for _, sg := range segs {
+	// the finale is the last work segment; MOWL ends that one hot and lets the
+	// earlier ones finish wherever the music does ([2,5,6], [4,6,6])
+	finale := -1
+	for i, sg := range segs {
+		if sg.Type != "recovery" && sg.Type != "cooldown" {
+			finale = i
+		}
+	}
+	for si, sg := range segs {
 		lo, hi := bandFor(sg.Type)
 		out := spec.Segment{Name: sg.Name, Type: sg.Type, Tracks: sg.Tracks}
 		if sg.Type == "recovery" || sg.Type == "cooldown" {
@@ -355,7 +363,26 @@ func build(tracks map[int]Track, segs []SegmentSpec, o Options, gamma float64) s
 			if sg.Type == "warmup" {
 				top = ladder[4] // red
 			}
-			last := &out.Intervals[len(out.Intervals)-1]
+			// Put the accent on the loudest of the closing intervals rather
+			// than blindly the last one: a track that fades out would other-
+			// wise be ridden hardest over its fade.
+			n := len(out.Intervals)
+			hot := n - 1
+			for i := n - 1; i >= 0 && i >= n-3; i-- {
+				if out.Intervals[i].Intensity.From > out.Intervals[hot].Intensity.From {
+					hot = i
+				}
+			}
+			if hot != n-1 && si == finale {
+				// only the finale has to finish hard; forcing it on every
+				// segment lands red on whatever fade happens to be there
+				fin := &out.Intervals[n-1]
+				red := ladder[4]
+				if fin.Intensity.From < red[0] {
+					fin.Intensity = spec.IntensityValue{From: red[0], To: red[1]}
+				}
+			}
+			last := &out.Intervals[hot]
 			last.Intensity = spec.IntensityValue{From: top[0], To: top[1]}
 			if last.Cycle == "acc" || last.Cadence[0] == 0 {
 				last.Cycle = "" // ACC overrules RPM, so a promoted burst needs a cadence back

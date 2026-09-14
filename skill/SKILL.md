@@ -212,8 +212,13 @@ overshoots badly.
 
 ### Structure
 
-- Work segments **end on red or above**, never blue or white. Build the last
-  segment's ending as a ramp — red, then fire, then owl.
+- The **finale** ends hot. Earlier work segments end wherever the music does:
+  MOWL's own work-segment endings run `[2,5,6]` and `[4,6,6]`, so a first
+  segment finishing on blue is normal. Forcing every segment hot lands the
+  accent on whatever fade happens to be there.
+- Put the hot accent on the **loudest of the closing intervals**, not blindly
+  the last one. A track that fades out would otherwise be ridden hardest over
+  its fade -- that alone dragged one ride's loudness match from +0.67 to +0.28.
 - Put an **Active Recovery segment** (`type: recovery`) between work segments.
   It is a single zone-1 interval riding its own short track, so the next work
   segment starts on a fresh song. Build the playlist with a 60-115s track at
