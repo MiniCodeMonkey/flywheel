@@ -271,6 +271,12 @@ func markACC(ivs []spec.Interval, rk []float64, share float64) []spec.Interval {
 		if iv.Duration < 15 || iv.Duration > 60 || iv.Position != "seated" {
 			continue
 		}
+		// A burst is an acceleration away from what the rider is already
+		// doing. Following a block at the same intensity, the cue says surge
+		// while the numbers say hold, and there is nothing to act on.
+		if i > 0 && ivs[i-1].Intensity == iv.Intensity {
+			continue
+		}
 		r := 0.0
 		if i < len(rk) {
 			r = rk[i]

@@ -116,6 +116,11 @@ Things that look right and are wrong:
   higher RPM" -- an acceleration, not a power step. Give it a zone bump and
   every burst costs TSS, which forces the loudness curve flat to compensate
   and hollows out the ride.
+- **Accelerating into the zone you are already in.** An ACC burst that follows
+  a block at the same intensity asks for nothing: the cue says surge, the
+  numbers say hold, and the rider feels the mismatch. A burst has to step up
+  from the block before it. When two identical neighbours need breaking apart,
+  change the zone or the position -- never reach for `cycle: acc` to do it.
 - **Owl on every finale.** Reserve zone 7; the official rock rides never use it.
 
 ## Design method

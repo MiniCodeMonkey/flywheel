@@ -405,3 +405,23 @@ func TestHotEndingLandsOnTheLoudestClosingSection(t *testing.T) {
 		t.Errorf("segment should still finish at red or above, ended %v", last.Intensity)
 	}
 }
+
+func TestACCNeverFollowsTheSameZone(t *testing.T) {
+	green := spec.IntensityValue{From: 76, To: 90}
+	yellow := spec.IntensityValue{From: 91, To: 105}
+	// The 30s green block is the loudest candidate, so rank alone would pick
+	// it -- but the block before it is green too, so there is nothing to
+	// accelerate away from.
+	ivs := []spec.Interval{
+		{Duration: 40, Intensity: green, Position: "seated"},
+		{Duration: 30, Intensity: green, Position: "seated"},
+		{Duration: 30, Intensity: yellow, Position: "seated"},
+	}
+	got := markACC(ivs, []float64{0.1, 1.0, 0.9}, 0.34)
+	if got[1].Cycle == "acc" {
+		t.Fatalf("burst accelerates into the zone it is already in: %+v after %+v", got[1], got[0])
+	}
+	if got[2].Cycle != "acc" {
+		t.Fatalf("expected the burst to move to the next eligible block, got %+v", got)
+	}
+}
