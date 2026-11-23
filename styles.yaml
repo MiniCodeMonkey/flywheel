@@ -6,7 +6,7 @@
 #   standing runs      ~30s, never past 90s      (--max-standing)
 #   standing cadence   60-78                     (--standing-cadence-max)
 #   ACC bursts         ~10% of work intervals    (--acc)
-#   crossfade          9s per track transition   (--crossfade)
+#   crossfade          10s per track transition  (--crossfade)
 #   cadence multiple   full or half BPM only, never two-thirds
 #   cadence per track   constant; too fast to stand at means stay seated
 road_cycling:            # steady road ride: higher RPM, seated, longer efforts

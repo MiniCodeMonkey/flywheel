@@ -1,11 +1,10 @@
 package spec
 
-// DefaultCrossfadeSec is how much of each track MOWL's timeline actually
-// overlaps with the next. MOWL asks for Spotify's crossfade to be set to 10
-// seconds, but its own editor lays tracks out about 9 apart: fitting segment
-// starts to track starts across four official rides puts the error at 1-3s for
-// 9 and 6-10s for either 8 or 10.
-const DefaultCrossfadeSec = 9
+// DefaultCrossfadeSec is how much of each track MOWL's timeline overlaps with
+// the next. MOWL requires Spotify's crossfade at exactly 10 seconds, with
+// Automix and gapless playback turned off; either of those moves the overlap
+// away from 10 and desyncs the ride.
+const DefaultCrossfadeSec = 10
 
 // Crossfade is the overlap between consecutive tracks, in seconds. An absent
 // crossfade_sec means the required default; an explicit 0 disables it.

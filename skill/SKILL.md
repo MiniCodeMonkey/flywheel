@@ -87,7 +87,7 @@ designed from one that reads as generated.
 | Structure | `W-AR-W-AR-W-CD`; 2-4 work segments, 3 is most common at 55 min |
 | Active recovery | one interval, 30-115s, zone 1, on its **own short track** |
 | Cooldown | one interval, 240-310s, zone 1, always the last segment |
-| Crossfade | 9s per track transition |
+| Crossfade | 10s per track transition |
 | Interval length | median ~31s, 90th percentile ~86s |
 | Standing run | ~30s typical, never past ~90s |
 | Standing cadence | 60-78, never higher |
@@ -260,8 +260,8 @@ overshoots badly.
   agree within ~1%. Target ~5% above the number you want and confirm against
   `apply`'s server TSS, which is authoritative.
 - **Playlist name comes back empty** from the hydrate endpoint; cosmetic.
-- **Crossfade must be 10s in Spotify, per device.** It is a device setting,
-  not a profile one. If it is wrong, or the connection drops mid-ride and
+- **Crossfade must be 10s in Spotify, per device, with Automix and gapless
+  playback off.** It is a device setting, not a profile one. If it is wrong, or the connection drops mid-ride and
   Spotify skips a crossfade, the ride desyncs by 10s per transition.
 
 Use `flywheel show <program-id> --intervals` to settle any question about

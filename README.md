@@ -139,7 +139,7 @@ and ~3 **segments** spanning multiple songs, each with **intervals**.
 | `targets.tss` | number | Target Training Stress Score. |
 | `style` | []string | Advisory tags (program-level), resolved via `styles.yaml`; written into the description, no direct MOWL field. |
 | `playlist.spotify_id` | string | Spotify playlist ID to import and link. |
-| `playlist.crossfade_sec` | number | Seconds each track overlaps the next; defaults to 9. See "Crossfade" below. |
+| `playlist.crossfade_sec` | number | Seconds each track overlaps the next; defaults to 10. See "Crossfade" below. |
 | `scaffold` | block | Written by `flywheel scaffold`: the options and segment specs that produced the file, so the ride can be regenerated exactly. Ignored when applying; absent on a hand-written course. |
 | `segments[].name` | string | Segment name. |
 | `segments[].type` | enum | One of `warmup`, `intervals`, `climb`, `tabata`, `recovery`, `cooldown` — maps to a MOWL segment category (and sets warmup/cooldown flags). |
@@ -248,8 +248,9 @@ so you can stay at the level of how the ride should *feel*.
 
 ## Crossfade
 
-MOWL requires Spotify's crossfade to be set to **10 seconds exactly**, and its
-own editor lays tracks out that way. Each track therefore starts 10s before
+MOWL requires Spotify's crossfade to be set to **10 seconds exactly**, with
+Automix and gapless playback turned off, and its own editor lays tracks out
+that way. Each track therefore starts 10s before
 the previous one ends, so a playlist's timeline is shorter than the sum of its
 track durations by one crossfade per transition — 2:30 across a 16-track ride.
 
